@@ -82,20 +82,20 @@ echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/Offsets"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/Offsets $TMPDIR/$RUN_NAME/Data/Intensities
 
 #intensities
-echo "`$NOW`$$PATH_SEQRUN_DIR/Data/Intensities/L00${LANE}"
-cp -r $$PATH_SEQRUN_DIR/Data/Intensities/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities
+echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/L00${LANE}"
+cp -r $PATH_SEQRUN_DIR/Data/Intensities/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities
 
 #basecalls
-echo "`$NOW`$$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE}"
-cp -r $$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls
+echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE}"
+cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls
 
 #Matrix
-echo "`$NOW`$$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_*"
-cp -r $$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Matrix
+echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_*"
+cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Matrix
 
 #Phasing
-echo "`$NOW`$$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_*"
-cp -r $$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Phasing
+echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_*"
+cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Phasing
 
 
 
@@ -112,27 +112,27 @@ make -j $THREADS
 
 echo "`$NOW`copying sample fastq files to $DATA_VOL_IGF/rawdata..."
 
-for PROJECT_DIR in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned/Project_*`
+for PROJECT_DIR in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned | grep Project_`
 
 do	
 
 	
 	#Obtaining the project names so that we are able to store the generated fastQ files directly into their corresponding project directories
 	PROJECT_NAME=`echo $PROJECT_DIR | cut -f2 -d '_'`
-	mkdir -p $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq
+	mkdir -p $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq
 
 	for SAMPLE_DIR in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/`
 	do
 		
 		SAMPLE_NAME=`echo $SAMPLE_DIR | cut -f2 -d '_'`
-		mkdir -p $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SAMPLE_NAME
+		mkdir -p $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME
 
 		for FASTQ_FILE in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR`
 		do
 
 			echo "`$NOW`$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE"
 			FASTQ_NAME=`echo $FASTQ_FILE | perl -pe "s/^${SAMPLE_NAME}_/${RUN_NAME}_/"`
-			cp $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ_NAME
+			cp $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ_NAME
 
 		done
 

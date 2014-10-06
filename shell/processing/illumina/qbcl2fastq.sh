@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# sets up directory structure and generates, configures and submits
+# scripts to run bcl2fastq conversion on an Illumnia run folder
+#
+
+#CONFIGURATION
+##############
+
+#now
+NOW="date +%Y-%m-%d%t%T%t"
+
+#today
+TODAY=`date +%Y-%m-%d`
+
+#returns absolute path to qfastqc directory, not changing your current directory
+BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
+DATA_VOL_IGF=/project/tgu
+DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
+DEPLOYMENT_BASE_DIR=/www/html/report
+QUEUE=pqcgi
+WALLTIME_HOURS_PER_JOB=24
+TMP_SPACE_GB=100
+USAGE="$BASEDIR/qbcl2fastq.usage"
+
+THREADS_PER_JOB=2
+
+#COMMAND LINE ARGS
+##################
+
+while getopts "i:h" option; do
+case "$option" in
+	i) INPUT_PATH="$OPTARG";;
+	h) cat "$USAGE"; exit 0;;
+	[?]) cat "$USAGE"; exit 1;;
+esac
+done
+
+#check if required arguments are missing
+if [ -z $INPUT_PATH ]
+then
+	cat "$USAGE"
+	exit 1
+fi
+
+#FUNCTIONS
+##########
+
+#creates job scripts
+function submitJobs {
+	
+	local path_seqrun_directory=$1	
+	local lane=$2
+	local seqrun_name=`basename $path_seqrun_directory`
+#	local path_run_dir=$DATA_VOL_IGF/analysis/seqrun/$seqrun_name/$TODAY/		##no permissions on this directory
+	local path_run_dir=/home/mkanwagi/analysis/seqrun/$seqrun_name/$TODAY/
+	
+	mkdir -p $path_run_dir
+
+	local script_path=$path_run_dir/bcl2Fastq.$seqrun_name.$lane.sh
+	cp $BASEDIR/bcl2fastq.sh $script_path
+
+	chmod 770 $script_path
+	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB/" $script_path
+	sed -i -e "s/#threads/$THREADS_PER_JOB/" $script_path
+	sed -i -e "s/#runName/$seqrun_name/" $script_path
+	sed -i -e "s/#lane/$lane/" $script_path	
+	sed -i -e "s/#tmpSpace/$TMP_SPACE_GB/" $script_path
+	sed -i -e "s/#pathSeqRunDir/${path_seqrun_directory//\//\\/}/" $script_path
+	
+	local log_path=`echo $script_path | perl -pe 's/\.sh/\.log/g'`
+	echo "`$NOW`submitting bcl2fastq job:" 
+	echo "`$NOW`bcl2Fastq.$seqrun_name.$lane.sh"
+	echo -n "`$NOW`"
+
+	echo "qsub -q $QUEUE -o $log_path $script_path"
+	#local job_id=`qsub -q $QUEUE -o $log_path $script_path`
+	#echo $job_id
+
+}
+
+for LANE in {1..8}
+do
+	submitJobs $INPUT_PATH $LANE
+done
+
+
+
+
+

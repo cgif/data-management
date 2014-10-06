@@ -1,0 +1,361 @@
+#!/bin/bash
+#
+# sets up directory structure and generates, configures and submits
+# scripts to run bcl2fastq conversion, generate fastqc reports, split fastq files(bwa), and carry out bwa mapping, on an Illumnia run folder
+#
+
+#CONFIGURATION
+##############
+
+#now
+NOW="date +%Y-%m-%d%t%T%t"
+
+#today
+TODAY=`date +%Y-%m-%d`
+
+#returns absolute path to qfastqc directory, not changing your current directory
+BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
+DATA_VOL_IGF=/project/tgu
+#DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
+#DEPLOYMENT_BASE_DIR=/www/html/report
+QUEUE=pqcgi
+WALLTIME_HOURS_PER_JOB=24
+TMP_SPACE_GB=100
+THREADS_PER_JOB=2
+USAGE="$BASEDIR/qbcl2fastq.usage"			##write a proper usage
+
+
+pattern_read1='_R1_'
+pattern_read1='_R2_'
+
+
+FASTQC_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/pre_processing/fastqc
+
+
+GROUP_VOL_CGI=/groupvol/cgi
+BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
+SPLITFASTQ_WALLTIME_HOURS=72	#check that this much time is required
+SPLITFASTQ_THREADS=4		#check that these many threads are required
+SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
+#BWA_SUMMARY_DEPLOYMENT=$DEPLOYMENT_BASE_DIR/$PROJECT/bwa/
+BWA_SUMMARY_RESULTS=$GROUP_VOL_CGI/results/$PROJECT/bwa/summary
+
+
+
+
+
+#COMMAND LINE ARGS
+##################
+
+while getopts "i:h" option; do
+case "$option" in
+	i) INPUT_SEQRUN_DIR="$OPTARG";;
+	h) cat "$USAGE"; exit 0;;
+	[?]) cat "$USAGE"; exit 1;;
+esac
+done
+
+#check if required arguments are missing
+if [ -z $INPUT_SEQRUN_DIR ]
+then
+	cat "$USAGE"
+	exit 1
+fi
+
+
+
+
+#FUNCTIONS
+##########
+
+#creates job scripts
+function submitbcl2fastqJobs {
+	
+	#bcl2Fastq variables
+	local seqrun_directory=$1	#we could obtain this seqrun_directory the global variable INPUT_PATH
+	local lane=$2
+
+	#fastQC variables
+
+	#bwa variables
+
+											##u need to separate these functions;;;; 'submitFastqjobs' can not be called by a code within the same functions
+
+	#BCL2FASTQ CONVERSION
+	#####################
+	
+	local bcl2fastq_script=$PATH_RUN_DIR/bcl2Fastq.$SEQRUN_NAME.$lane.sh
+	cp $BASEDIR/bcl2fastq.sh $bcl2fastq_script
+	chmod 770 $bcl2fastq_script
+	
+	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB/" $bcl2fastq_script
+	sed -i -e "s/#threads/$THREADS_PER_JOB/" $bcl2fastq_script
+	sed -i -e "s/#runName/$SEQRUN_NAME/" $bcl2fastq_script
+	sed -i -e "s/#lane/$lane/" $bcl2fastq_script	
+	sed -i -e "s/#tmpSpace/$TMP_SPACE_GB/" $bcl2fastq_script
+	sed -i -e "s/#pathSeqRunDir/${seqrun_directory//\//\\/}/" $bcl2fastq_script
+	sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $bcl2fastq_script
+	
+	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
+	echo "`$NOW`submitting bcl2fastq job:" 
+	echo "`$NOW`bcl2Fastq.$SEQRUN_NAME.$lane.sh"
+	echo -n "`$NOW`"				
+
+	echo "qsub -q $QUEUE -o $log_path $bcl2fastq_script"
+	local job_id=`qsub -q $QUEUE -o $log_path $bcl2fastq_script`	
+	echo "$job_id,$lane" >> $BCL2FASTQ_JOB_ID_LIST			
+	
+}
+
+
+function submitfastqcJobs {			#for this step, u can't do parallelisation according to lane, as the file are not ordered to lanes: just run the function on the already generated fastq files from the earlier function
+
+	for row in `cat $BCL2FASTQ_JOB_ID_LIST`
+	do
+
+		local bcl2fastq_job_id=`echo $row | cut -f1 -d ','`
+		local lane=`echo $row | cut -f2 -d ','`
+
+		local seqrun_directory=$1	
+								
+		#FASTQC
+		#######
+
+		#in this segment, fastqc job_scripts are generated for each fastq file(after checking for paired-reads) and then submitted.
+	
+		#fastq files are organised in according to samples in their source directory - to access them, the sample names are obtained from the samplesheet(flowcell_id.csv) which is obtained from the sequencing_RUN_NAME
+		#RUN_NAME got from the input parameter 'sequencing run directory'
+
+
+		local flowcell_id=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$flowcell_id=<>; $flowcell_id=substr($flowcell_id,1,9); print "$flowcell_id\n"'`
+	
+		##conditon to
+		for row2 in `cat $seqrun_directory/$flowcell_id.csv`
+		do
+			
+			local sample=`echo $row2 | cut -f3 -d ','`
+			local index=`echo $row2 | cut -f5 -d ','`
+			local project_name=`echo $row2 | cut -f10 -d ','`			
+
+			fastq_read1_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R1_001
+			fastq_read2_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R2_001
+
+			fastq_read1=`ls $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ1_PREFIX.f*q.gz`
+			fastq_read2=`ls $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ2_PREFIX.f*q.gz`
+			
+			
+			#create output directory for the QC reports for each file
+			echo "`$NOW`creating output directory for QC reports of sample $SAMPLE "
+			QC_REPORT_OUTPUTDIR=$DATA_VOL_IGF/analysis/AZ/$PROJECT/fastqc/reports/$SAMPLE
+			mkdir -m 770 -p $QC_REPORT_OUTPUTDIR
+			
+			#create deployment directories for the QC reports for each file
+#			FASTQC_DEPLOYMENT_PATH=$DEPLOYMENT_BASE_DIR/$PROJECT/fastqc/
+#			FASTQC_SUMMARY_DEPLOYMENT=$DEPLOYMENT_BASE_DIR/AZ/$PROJECT/fastqc/summary/$SAMPLE
+#			mkdir -m 770 -p $FASTQC_DEPLOYMENT_PATH
+	
+			#create fastqc script from template
+			echo "`$NOW`creating and submitting job scripts for QC of fastq files for sample $SAMPLE"
+		
+			#handling each fastq file, in each sample directory
+	
+			#check if mate file was found...
+			if [ -z $fastq_read1 ] 
+			then
+				#...if not skip fastq file
+				echo "`$NOW`ERROR:read 1 fastq file $fastq_read1 not found. Skipped."   		
+			
+			elif [ -z $fastq_read2 ] 
+			then
+				#...if not skip fastq file
+				echo "`$NOW`ERROR:read 2 fastq file $fastq_read1 not found. Skipped."   		
+
+			else
+								
+				local fastQC_script_path=$PATH_RUN_DIR/fastQC.$fastq_read1.sh	#***Qn 1: as in qfastqc: but this would seem to create a local script for only the read1 fastq file but a script is req for all fastq files
+				cp $FASTQC_SCRIPT_DIR/fastQC.altered.sh $fastQC_script_path
+				chmod 770 $fastQC_script_path
+			
+				#configure fastqc script
+				sed -i -e "s/#pathReadsFastq/${$fastq_read2//\//\\/}/" $fastQC_script_path
+				sed -i -e "s/#fastqRead1/${fastq_read1//\//\\/}/" $fastQC_script_path
+				sed -i -e "s/#fastqRead2/${fastq_read2//\//\\/}/" $fastQC_script_path
+				sed -i -e "s/#pathQcReportDir/${QC_REPORT_OUTPUTDIR//\//\\/}/" $fastQC_script_path
+#				sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $fastQC_script_path	
+#				sed -i -e "s/#deploymentPath/${FASTQC_DEPLOYMENT_PATH//\//\\/}/" $fastQC_script_path	
+#				sed -i -e "s/#summaryPath/${FASTQC_SUMMARY_DEPLOYMENT//\//\\/}/" $fastQC_script_path
+
+			  	#submit job 
+			  	#log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
+			  	#job_id=`qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
+				#echo "`$NOW`Read pair: $fastq_read1 AND $fastq_read2"		#potential error in qfastqc; "fastq_read1" seems to be repeated
+				#echo "`$NOW`Job ID:$job_id"
+				#echo -n "`$NOW`"				
+				#echo -e "$job_id" >> $FASTQC_JOB_ID_LIST
+
+			fi
+
+		done
+
+	done
+		
+}
+
+
+
+
+SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`
+PATH_RUN_DIR=$DATA_VOL_IGF/analysis/AZ/$SEQRUN_NAME/$TODAY/	
+#PATH_RUN_DIR=/home/mkanwagi/analysis/seqrun/$SEQRUN_NAME/$TODAY
+mkdir -p $PATH_RUN_DIR
+
+
+BCL2FASTQ_JOB_ID_LIST=$PATH_RUN_DIR/bcl2fastq_job_id_list.txt
+#intialise bcl2Fastq Job ID file
+echo -n "" > $BCL2FASTQ_JOB_ID_LIST
+chmod 660 $BCL2FASTQ_JOB_ID_LIST
+
+FASTQC_JOB_ID_LIST=$PATH_RUN_DIR/fastqc_job_id_list.txt
+#intialise bcl2Fastq Job ID file
+echo -n "" > $FASTQC_JOB_ID_LIST
+chmod 660 $FASTQC_JOB_ID_LIST
+
+
+
+
+
+
+for LANE in {1..8}
+do
+	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $LANE
+done
+
+exit
+
+
+
+# FASTQC RUNS
+#############
+			
+FLOWCELL_ID=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$flowcell_id=<>; $flowcell_id=substr($flowcell_id,1,9); print "$flowcell_id\n"'`
+SAMPLES=`sed 1d FLOWCELL_ID.csv | cut -f3 -d ','`
+
+for SAMPLE in $SAMPLES
+do
+	PROJECT=grep ${SAMPLE} $INPUT_SEQRUN_DIR/$FLOWCELL_ID.csv | cut -f10 -d ','
+	echo "`$NOW`setting up FastQC runs"
+
+	if [ -d $INPUT_SEQRUN_DIR ]; then    
+	
+		#create and set permissions for analysis project parent directory
+		mkdir -m 770 -p $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc
+		PROJECT_ANALYSIS_DIR=$GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc
+		
+		#create and set permissions for results project parent directory
+		mkdir -m 770 -p $GROUP_VOL_CGI/results/$PROJECT/fastqc
+		PROJECT_RESULT_DIR=$GROUP_VOL_CGI/results/$PROJECT/fastqc
+	
+		#create and set permissions for multisample analysis directory			
+		mkdir -m 770 -p $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/multisample			#1
+
+
+		mkdir -m 770 -p $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/multisample/run			#3 ****why not just use this and omit #1	
+		MS_ANALYSIS_DIR=$GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/multisample
+			
+		#create and set permissions for multisample results directory
+		mkdir -m 770 -p $GROUP_VOL_CGI/results/$PROJECT/fastqc/multisample
+		MS_RESULT_DIR=$GROUP_VOL_CGI/results/$PROJECT/fastqc/multisample
+		
+		#JOB_ID_LIST=$MS_ANALYSIS_DIR/job_id_list.txt
+		#echo -n "" > $JOB_ID_LIST
+		#chmod 660 $JOB_ID_LIST		
+
+		#create summary directory on deployment server
+#		SUMMARY_DEPLOYMENT=$DEPLOYMENT_BASE_DIR/project/$PROJECT/fastqc
+#		scp -r ${BASEDIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$FASTQC_SUMMARY_DEPLOYMENT/ > /dev/null 2>&1
+#		scp -r ${BASEDIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$FASTQC_SUMMARY_DEPLOYMENT/ > /dev/null 2>&1
+#		scp -r ${BASEDIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$FASTQC_SUMMARY_DEPLOYMENT/ > /dev/null 2>&1
+#		ssh $DEPLOYMENT_SERVER "chmod -R 664 $FASTQC_SUMMARY_DEPLOYMENT/*png" > /dev/null 2>&1
+
+
+
+		#beginning fastq file processing
+		FASTQ_DIR=$DATA_VOL_IGF/rawdata/AZ/$PROJECT/fastq/$SAMPLE/
+	
+		if [ -d $FASTQ_DIR ]; then
+
+		#count fastq files in directory		
+		FASTQ_COUNT=`ls --color=never $FASTQ_DIR/*.f*q* | wc -l`
+
+			if [ $FASTQ_COUNT -gt 0 ]; then
+		
+				echo "`$NOW`processing directory $FASTQ_DIR..."
+		
+				#...create output directory
+				mkdir -p $GROUP_VOL_CGI/results/$PROJECT/fastqc/$SAMPLE
+				chmod 770 $GROUP_VOL_CGI/results/$PROJECT/fastqc/$SAMPLE
+				OUT_RESULTS=$GROUP_VOL_CGI/results/$PROJECT/fastqc/$SAMPLE
+		
+				mkdir -p $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/$SAMPLE
+				chmod 770 $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/$SAMPLE
+		
+				mkdir -p $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/$SAMPLE/run
+				chmod 770 $GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/$SAMPLE/run
+				OUT_SCRIPTS=$GROUP_VOL_CGI/analysis/AZ/$PROJECT/fastqc/$SAMPLE/run
+		
+				echo "`$NOW`input directory: $FASTQ_DIR"
+				echo "`$NOW`QC report output directory: $OUT_RESULTS" 
+				echo "`$NOW`script and log output directory: $OUT_SCRIPTS"
+
+#				DEPLOYMENT_PATH=$DEPLOYMENT_BASE_DIR/project/$PROJECT/fastqc/$SAMPLE
+			
+				#create, configure and submit job scripts
+				submitfastqcJobs $INPUT_SEQRUN_DIR		#this script will end-up developing as many scripts as there are samples; a script for every sample
+      			
+			else
+				echo "`$NOW`directory $SAMPLE does not contain any fastq files (.fq or .fastq file extension)"
+			fi
+		else 
+			echo "`$NOW`Error: Input Fastq file directory is not a directory."				
+			exit 1 
+		fi
+
+
+		#create summary script from template
+#		echo "`$NOW`creating and submitting job script for summary of results"
+#		SUMMARY_PATH=$MS_ANALYSIS_DIR/run/summary.$PROJECT.pl					#check BASEDIR for this step
+#		cp $BASEDIR/summary_fastqc.pl $SUMMARY_PATH
+#		chmod 770 $SUMMARY_PATH
+##	
+#		#configure summary script, it will be executed from fastqc script
+#		sed -i -e "s/#pathReadsFastq/${INPUT_PATH//\//\\/}/" $SUMMARY_PATH
+#		sed -i -e "s/#pathAnalysisDir/${PROJECT_ANALYSIS_DIR//\//\\/}/" $SUMMARY_PATH
+#		sed -i -e "s/#pathReportsDir/${PROJECT_RESULT_DIR//\//\\/}/" $SUMMARY_PATH
+#		sed -i -e "s/#pathMSReportsDir/${MS_RESULT_DIR//\//\\/}/" $SUMMARY_PATH
+#		sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $SUMMARY_PATH
+#		sed -i -e "s/#summaryDeployment/${SUMMARY_DEPLOYMENT//\//\\/}/" $SUMMARY_PATH
+
+		#summary is on hold until fastqc runs are completed 
+		#collect fastqc job ids for dependency variable
+#		SUMMARY_JOB_DEPENDENCY="afterany"
+#		for JOB_ID in `grep 'cx1' $FASTQC_JOB_ID_LIST`
+#		do
+#	        	JOB_ID=`basename $JOB_ID .cx1b`
+#			SUMMARY_JOB_DEPENDENCY="$SUMMARY_JOB_DEPENDENCY:$JOB_ID"
+#		done	
+#	
+#		#submit job 
+#		LOG_OUTPUT_PATH=`echo $SUMMARY_PATH | perl -pe 's/\.pl/\.log/g'`
+#		JOB_ID=`qsub -q $QUEUE -W depend=$SUMMARY_JOB_DEPENDENCY -o $LOG_OUTPUT_PATH -j oe $SUMMARY_PATH`
+#		echo "`$NOW`Job ID:$JOB_ID"
+	
+	else		
+			echo "`$NOW`Error: Input sequencing run directory is not a directory."
+			exit 1
+	fi
+done
+
+
+
+#submitfastqcJobs $INPUT_SEQRUN_DIR
+

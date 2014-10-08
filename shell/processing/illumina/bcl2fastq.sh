@@ -37,7 +37,7 @@ PATH_SEQRUN_DIR=#pathSeqRunDir
 RUN_NAME=#runName
 FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$flowcell_id=<>; $flowcell_id=substr($flowcell_id,1,9); print "$flowcell_id\n"'`
 LANE=#lane
-READ=#read
+#READ=#read
 
 echo "`$NOW`: staging input files..."
 #create temporary run folder
@@ -109,11 +109,14 @@ $CASAVA_HOME/bin/configureBclToFastq.pl --fastq-cluster-count -1 --input-dir $TM
 echo "`$NOW`: running Bcl->fastq conversion conversion..."
 cd $TMPDIR/$RUN_NAME/Unaligned		#changing to the 'Unaligned' sub-folder of the project to configure
 
-MAKE_OPTIONS="$THREADS r1"
-if ["$READ" -eq "2"]
-then
-	MAKE_OPTIONS="$THREADS r2"
-fi
+
+#The lines commented out below were meant to eanble us to run the make functioon per read, but we abandoned that when it became apparent that Casava 1.8.2 doesn't allow that kind of action. As a note, when the script was run in that manner,  for make ...r2, the script run smoothly, the log files indicated that it was interpreted as read1, except that in the end no read-2 fastq file was generated
+#MAKE_OPTIONS="$THREADS r1"
+#if ["$READ" -eq "2"]
+#then
+#	MAKE_OPTIONS="$THREADS r2"
+#fi
+MAKE_OPTIONS=$THREADS
 
 make -j $MAKE_OPTIONS
 

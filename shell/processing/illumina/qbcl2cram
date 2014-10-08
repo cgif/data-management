@@ -75,44 +75,34 @@ function submitbcl2fastqJobs {
 	local seqrun_directory=$1	#we could obtain this seqrun_directory the global variable INPUT_PATH
 	local lane=$2
 
-	#fastQC variables
 
-	#bwa variables
-
-											##u need to separate these functions;;;; 'submitFastqjobs' can not be called by a code within the same functions
 
 	#BCL2FASTQ CONVERSION
 	#####################
 	
 	echo -n $lane >> $BCL2FASTQ_JOB_ID_LIST
 
-	for read in 1 2
-	do
+	local bcl2fastq_script=$PATH_RUN_DIR_BCL2FASTQ/bcl2Fastq.$SEQRUN_NAME.${lane}_${read}.sh
+	cp $BASEDIR/bcl2fastq.sh $bcl2fastq_script
+	chmod 770 $bcl2fastq_script
 
-		local bcl2fastq_script=$PATH_RUN_DIR_BCL2FASTQ/bcl2Fastq.$SEQRUN_NAME.${lane}_${read}.sh
-		cp $BASEDIR/bcl2fastq.sh $bcl2fastq_script
-		chmod 770 $bcl2fastq_script
+	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB/" $bcl2fastq_script
+	sed -i -e "s/#threads/$THREADS_PER_JOB/" $bcl2fastq_script
+	sed -i -e "s/#runName/$SEQRUN_NAME/" $bcl2fastq_script
+	sed -i -e "s/#lane/$lane/" $bcl2fastq_script
+	sed -i -e "s/#tmpSpace/$TMP_SPACE_GB/" $bcl2fastq_script
+	sed -i -e "s/#pathSeqRunDir/${seqrun_directory//\//\\/}/" $bcl2fastq_script
+	sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $bcl2fastq_script
+
+	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
+	echo "`$NOW`submitting bcl2fastq job:" 
+	echo "`$NOW`bcl2Fastq.$SEQRUN_NAME.$lane.sh"
+	echo -n "`$NOW`"				
 	
-		sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB/" $bcl2fastq_script
-		sed -i -e "s/#threads/$THREADS_PER_JOB/" $bcl2fastq_script
-		sed -i -e "s/#runName/$SEQRUN_NAME/" $bcl2fastq_script
-		sed -i -e "s/#lane/$lane/" $bcl2fastq_script
-		sed -i -e "s/#read/$read/" $bcl2fastq_script	
-		sed -i -e "s/#tmpSpace/$TMP_SPACE_GB/" $bcl2fastq_script
-		sed -i -e "s/#pathSeqRunDir/${seqrun_directory//\//\\/}/" $bcl2fastq_script
-		sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $bcl2fastq_script
 	
-		local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
-		echo "`$NOW`submitting bcl2fastq job:" 
-		echo "`$NOW`bcl2Fastq.$SEQRUN_NAME.$lane.sh"
-		echo -n "`$NOW`"				
-		
-		
-		echo "qsub -q $QUEUE -o $log_path $bcl2fastq_script"
-		local job_id=`qsub -o $log_path $bcl2fastq_script`	
-		echo -n ",$job_id" >> $BCL2FASTQ_JOB_ID_LIST			
-	
-	done	
+	echo "qsub -q $QUEUE -o $log_path $bcl2fastq_script"
+	local job_id=`qsub -o $log_path $bcl2fastq_script`	
+	echo ",$job_id" >> $BCL2FASTQ_JOB_ID_LIST			
 
 }
 
@@ -159,8 +149,8 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 	do
 
 		local lane=`echo $row | cut -f1 -d ','`
-		local bcl2fastq_job_id_read1=`echo $row | cut -f2 -d ','`
-		local bcl2fastq_job_id_read2=`echo $row | cut -f3 -d ','`
+		local bcl2fastq_job_id=`echo $row | cut -f2 -d ','`
+		
 			
 	
 		local rowcount=0
@@ -185,17 +175,10 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 			local sample_name=`echo $line | cut -f3 -d ',' | perl -pe 's/\s//g'`
 			local index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
 			local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`			
-			
-
-			local fastq_read1_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R1_001
-			local fastq_read2_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R2_001
-
-			local fastq_read1_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read1_prefix.f*q.gz`
-			local fastq_read2_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read2_prefix.f*q.gz`
-				
-			local path_reads_dir=`dirname $fastq_read1_path`
-			local fastq_read1=`basename $fastq_read1_path`
-			local fastq_read2=`basename $fastq_read2_path`
+							
+			local path_reads_dir=$DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name
+			local fastq_read1=${SEQRUN_NAME}_${index}_L00${lane}_R1_001.fastq.gz
+			local fastq_read2=${SEQRUN_NAME}_${index}_L00${lane}_R2_001.fastq.gz
 
 			#create output directory for the QC reports for each file
 			echo "`$NOW`creating output directory for QC reports of sample $sample_name "
@@ -216,44 +199,29 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 			echo "`$NOW`creating and submitting job scripts for QC of fastq files for sample $sample_name in lane $lane"
 		
 			#handling each fastq file, in each sample directory
-	
-			#check if mate file was found...
-			if [ -z $fastq_read1 ] 											#script doesn't enter this loop because there are no fastQ 
-			then
-				#...if not skip fastq file
-				echo "`$NOW`ERROR:read 1 fastq file $fastq_read1 not found. Skipped."   		
-			
-			elif [ -z $fastq_read2 ] 
-			then
-				#...if not skip fastq file
-				echo "`$NOW`ERROR:read 2 fastq file $fastq_read1 not found. Skipped."   		
+									
+			local fastQC_script_path=$path_run_dir/fastQC.$fastq_read1.sh	
+			cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
+			chmod 770 $fastQC_script_path
+		
+			#configure fastqc script
+			sed -i -e "s/#pathReadsFastq/${path_reads_dir//\//\\/}/" $fastQC_script_path
+			sed -i -e "s/#fastqRead1/${fastq_read1//\//\\/}/" $fastQC_script_path
+			sed -i -e "s/#fastqRead2/${fastq_read2//\//\\/}/" $fastQC_script_path
+			sed -i -e "s/#pathQcReportDir/${qc_report_outputdir//\//\\/}/" $fastQC_script_path
+			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $fastQC_script_path	
+  			sed -i -e "s/#deploymentPath/${fastqc_deployment_path//\//\\/}/" $fastQC_script_path	
+			sed -i -e "s/#summaryPath/${fastqc_summary_deployment//\//\\/}/" $fastQC_script_path
 
-			else
-								
-				local fastQC_script_path=$path_run_dir/fastQC.$fastq_read1.sh	
-				cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
-				chmod 770 $fastQC_script_path
-			
-				#configure fastqc script
-				sed -i -e "s/#pathReadsFastq/${path_reads_dir//\//\\/}/" $fastQC_script_path
-				sed -i -e "s/#fastqRead1/${fastq_read1//\//\\/}/" $fastQC_script_path
-				sed -i -e "s/#fastqRead2/${fastq_read2//\//\\/}/" $fastQC_script_path
-				sed -i -e "s/#pathQcReportDir/${qc_report_outputdir//\//\\/}/" $fastQC_script_path
-				sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $fastQC_script_path	
-	  			sed -i -e "s/#deploymentPath/${fastqc_deployment_path//\//\\/}/" $fastQC_script_path	
-				sed -i -e "s/#summaryPath/${fastqc_summary_deployment//\//\\/}/" $fastQC_script_path
-
-			  	#submit job 
-			  	log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
-				#for testing
-				echo "qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id_read1:$bcl2fastq_job_id_read2 -o $log_output_path $fastQC_script_path"
-				#job_id=`qsub -q $QUEUE -o $log_output_path $fastQC_script_path`
-			  	job_id=`qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id_read1:$bcl2fastq_job_id_read2 -o $log_output_path $fastQC_script_path`
-				echo "`$NOW`Read pair: $fastq_read1 AND $fastq_read2"		
-				echo "`$NOW`Job ID:$job_id"
-				echo -e "$job_id" >> $job_id_list				
-	
-			fi
+		  	#submit job 
+		  	log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
+			#for testing
+			echo "qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path"
+			#job_id=`qsub -q $QUEUE -o $log_output_path $fastQC_script_path`
+		  	job_id=`qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
+			echo "`$NOW`Read pair: $fastq_read1 AND $fastq_read2"		
+			echo "`$NOW`Job ID:$job_id"
+			echo -e "$job_id" >> $job_id_list				
 
 		done <$seqrun_directory/$flowcell_id.csv
 
@@ -309,8 +277,6 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 	done
 
 }
-
-
 
 
 SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`

@@ -189,6 +189,10 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 
 			local fastq_read1_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R1_001
 			local fastq_read2_prefix=${SEQRUN_NAME}_${index}_L00${lane}_R2_001
+			
+			FASTQ_DIR=$DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name
+			
+			until [ -d $FASTQ_DIR ]; do
 
 			local fastq_read1_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read1_prefix.f*q.gz`
 			local fastq_read2_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read2_prefix.f*q.gz`
@@ -254,7 +258,7 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 				echo -e "$job_id" >> $job_id_list				
 	
 			fi
-
+			done
 		done <$seqrun_directory/$flowcell_id.csv
 
 	done <$BCL2FASTQ_JOB_ID_LIST
@@ -338,6 +342,25 @@ submitfastqcJobs $INPUT_SEQRUN_DIR
 
 # BWA RUNS
 #############
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

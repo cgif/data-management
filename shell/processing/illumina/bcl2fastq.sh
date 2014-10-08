@@ -37,6 +37,7 @@ PATH_SEQRUN_DIR=#pathSeqRunDir
 RUN_NAME=#runName
 FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$flowcell_id=<>; $flowcell_id=substr($flowcell_id,1,9); print "$flowcell_id\n"'`
 LANE=#lane
+READ=#read
 
 echo "`$NOW`: staging input files..."
 #create temporary run folder
@@ -107,8 +108,14 @@ $CASAVA_HOME/bin/configureBclToFastq.pl --fastq-cluster-count -1 --input-dir $TM
 
 echo "`$NOW`: running Bcl->fastq conversion conversion..."
 cd $TMPDIR/$RUN_NAME/Unaligned		#changing to the 'Unaligned' sub-folder of the project to configure
-make -j $THREADS
 
+MAKE_OPTIONS="$THREADS r1"
+if ["$READ" -eq "2"]
+then
+	MAKE_OPTIONS="$THREADS r2"
+fi
+
+make -j $MAKE_OPTIONS
 
 echo "`$NOW`copying sample fastq files to $DATA_VOL_IGF/rawdata..."
 
@@ -119,20 +126,20 @@ do
 	
 	#Obtaining the project names so that we are able to store the generated fastQ files directly into their corresponding project directories
 	PROJECT_NAME=`echo $PROJECT_DIR | cut -f2 -d '_'`
-	mkdir -p $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq
+	mkdir -p $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq
 
 	for SAMPLE_DIR in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/`
 	do
 		
 		SAMPLE_NAME=`echo $SAMPLE_DIR | cut -f2 -d '_'`
-		mkdir -p $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME
+		mkdir -p $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SAMPLE_NAME
 
 		for FASTQ_FILE in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR`
 		do
 
 			echo "`$NOW`$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE"
 			FASTQ_NAME=`echo $FASTQ_FILE | perl -pe "s/^${SAMPLE_NAME}_/${RUN_NAME}_/"`
-			cp $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE $DATA_VOL_IGF/rawdata/AZ/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ_NAME
+			cp $TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_DIR/$FASTQ_FILE $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SAMPLE_NAME/$FASTQ_NAME
 
 		done
 

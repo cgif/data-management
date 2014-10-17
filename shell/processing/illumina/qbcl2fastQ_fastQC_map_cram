@@ -192,14 +192,12 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 			
 			FASTQ_DIR=$DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name
 			
-			until [ -d $FASTQ_DIR ]; do
+		
 
-			local fastq_read1_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read1_prefix.f*q.gz`
-			local fastq_read2_path=`ls $DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name/$fastq_read2_prefix.f*q.gz`
 				
-			local path_reads_dir=`dirname $fastq_read1_path`
-			local fastq_read1=`basename $fastq_read1_path`
-			local fastq_read2=`basename $fastq_read2_path`
+			local path_reads_dir=$DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name
+			local fastq_read1=$fastq_read1_prefix.fastq.gz
+			local fastq_read2=$fastq_read2_prefix.fastq.gz
 
 			#create output directory for the QC reports for each file
 			echo "`$NOW`creating output directory for QC reports of sample $sample_name "
@@ -258,7 +256,7 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 				echo -e "$job_id" >> $job_id_list				
 	
 			fi
-			done
+			
 		done <$seqrun_directory/$flowcell_id.csv
 
 	done <$BCL2FASTQ_JOB_ID_LIST

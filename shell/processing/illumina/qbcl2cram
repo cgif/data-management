@@ -11,8 +11,8 @@
 NOW="date +%Y-%m-%d%t%T%t"
 
 #today
-TODAY=`date +%Y-%m-%d`
-#TODAY=2014-10-08
+#TODAY=`date +%Y-%m-%d`
+TODAY=2014-10-17										#CHANGED 'TODAY' so that a directory with that name can be accessed
 
 #returns absolute path to qfastqc directory, not changing your current directory
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
@@ -247,7 +247,7 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 		  	log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
 			#for testing
 			echo "qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path"
-#		  	job_id=`qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
+		  	job_id=`qsub -q $QUEUE -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
 			echo "`$NOW`Read pair: $fastq_read1 AND $fastq_read2"		
 			echo "`$NOW`Job ID:$job_id"
 			echo -e "$job_id" >> $job_id_list				
@@ -297,7 +297,7 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 		local log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
 		#for testing
 		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
-		local job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
+#		local job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
 		echo "`$NOW`Job ID:$job_id"
 
 	done
@@ -394,7 +394,9 @@ function submitBWAMEMJobs {
 			reference_dict_name=${reference_dict_name}.dict
 			local path_reference_dict=$path_reference_dict_dir/$reference_dict_name
 
-			echo "`$NOW`creating and submitting job scripts:" >> $SETUP_LOG
+			
+
+			echo "`$NOW`creating and submitting job scripts:"
 
 			#create directory structure for merged bam files;
                         #each file will contain the same reads as in the original fastq file
@@ -402,9 +404,9 @@ function submitBWAMEMJobs {
 			local path_results_dir_cram=$DATA_VOL_IGF/rawdata/$project_name/cram/$sample_name
 
 			if [ ! -e path_results_dir ]; then
-				echo "`$NOW`creating BWA results directory $path_results_dir" >> $SETUP_LOG
+				echo "`$NOW`creating BWA results directory $path_results_dir"
 				mkdir -m 770 -p $path_results_dir
-				echo "`$NOW`creating CRAM directory $path_results_dir_cram" >> $SETUP_LOG
+				echo "`$NOW`creating CRAM directory $path_results_dir_cram"
 				mkdir -m 770 -p $path_results_dir_cram
 			fi
 
@@ -415,16 +417,20 @@ function submitBWAMEMJobs {
 			
 
 			if [ ! -e path_run_dir ]; then
-				echo "`$NOW`creating BWA analysis directories in $path_results_dir" >> $SETUP_LOG
+				echo "`$NOW`creating BWA analysis directories in $path_results_dir"
 				mkdir -m 770 -p $path_run_dir
 				mkdir -m 770 -p $path_scripts_dir
 				mkdir -m 770 -p $path_mapping_dir
 				mkdir -m 770 -p $path_tmp_dir
 			fi
 			
+			
+			SETUP_LOG=$path_scripts_dir/setup.log
+			echo -n "" > $SETUP_LOG
+
 
 			#temporary directory for splitfastq results
-			local splitfastq_output_dir=$path_tmp_dir/${fastq_read1_no_ext}_split	
+			local splitfastq_output_dir=$path_tmp_dir/	
 			mkdir -m 770 -p $splitfastq_output_dir
 
 			########################################
@@ -463,7 +469,7 @@ function submitBWAMEMJobs {
 				echo -n "`$NOW`" >> $SETUP_LOG
 
 				#echo "qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path"
-				local job_id=`qsub -o $log_path $script_path`
+				#local job_id=`qsub -o $log_path $script_path`
 				#local job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path`
 				echo $job_id >> $SETUP_LOG
 
@@ -473,7 +479,7 @@ function submitBWAMEMJobs {
 
 			#######################
 
-			echo -n "" >> $SETUP_LOG	
+			
 
 			local bwa_summary_results=$DATA_VOL_IGF/analysis/$project_name/bwa/$TODAY
 			bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/bwa/$TODAY
@@ -509,18 +515,20 @@ function submitBWAMEMJobs {
 			sed -i -e "s/#summaryResults/${bwa_summary_results//\//\\/}/" $bwa_mapping_script
 			sed -i -e "s/#walltimeHoursPerRun/$WALLTIME_HOURS_PER_RUN_BWA/" $bwa_mapping_script
 			sed -i -e "s/#threadsPerRun/$THREADS_PER_RUN_BWA/" $bwa_mapping_script
+			sed -i -e "s/#cram2BamConversion/T/"  $bwa_mapping_script
 			sed -i -e "s/#samtoolsVersion/$SAMTOOLS_VERSION/" $bwa_mapping_script
 			sed -i -e "s/#bwaVersion/$BWA_VERSION/" $bwa_mapping_script
 			sed -i -e "s/#pathReferenceSeqDict/${path_reference_dict//\//\\/}/" $bwa_mapping_script
-			sed -i -e "s/#cram2BamConversion/T/"  $bwa_mapping_script
-			sed -i -e "s/#pathOutputCram/${path_results_dir_cram//\//\\/}/"  $bwa_mapping_script			
+			sed -i -e "s/#pathOutputCram/${path_results_dir_cram//\//\\/}/"  $bwa_mapping_script		
+			
 
 			local bwa_log_path=`echo $bwa_mapping_script | perl -pe 's/\.sh/\.log/g'`
 	
 			echo "`$NOW`submitting submitMappingScript job for $fastq_read1 AND $fastq_read2 :"   >> $SETUP_LOG
 			echo "`$NOW`submitMappingScript.$output_prefix.sh"   >> $SETUP_LOG
 					
-			job_id=`qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script`
+			job_id=`qsub -o $bwa_log_path $bwa_mapping_script`
+			#job_id=`qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script`
 			#echo "qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script"
 			echo "`$NOW`Job ID:$job_id"  >> $SETUP_LOG
 				
@@ -539,8 +547,9 @@ SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`
 PATH_RUN_DIR_BCL2FASTQ=$DATA_VOL_IGF/analysis/seqrun/bcl2fastq/2014-10-08				#changed $TODAY here to the date which actually exists in the folder
 #mkdir -p $PATH_RUN_DIR_BCL2FASTQ
 
-SETUP_LOG=$PATH_RUN_DIR_BCL2FASTQ/setup.log
-echo -n "" > $SETUP_LOG
+
+
+
 
 BCL2FASTQ_JOB_ID_LIST=$PATH_RUN_DIR_BCL2FASTQ/bcl2fastq.$SEQRUN_NAME.job_id_list.txt
 
@@ -567,12 +576,6 @@ exit 1
 
 
 
-
-
-
-
-
-##Problem in splitFastq.sh script; Software 'pigz' is on group-vol/cgi on which i don't have permissions
 
 
 

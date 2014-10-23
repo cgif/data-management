@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # sets up directory structure and generates, configures and submits
-# scripts to run bcl2fastq conversion, generate fastqc reports, split fastq files(bwa), and carry out bwa mapping, on an Illumnia run folder
+# scripts to run bcl2fastq conversion, generate fastqc reports, split fastq files(bwa), and carry out bwa mapping, cram file generation on an Illumnia run folder
 #
 
 #CONFIGURATION
@@ -11,12 +11,12 @@
 NOW="date +%Y-%m-%d%t%T%t"
 
 #today
-#TODAY=`date +%Y-%m-%d`
-TODAY=2014-10-17										#CHANGED 'TODAY' so that a directory with that name can be accessed
+TODAY=`date +%Y-%m-%d`
+						
 
 #returns absolute path to qfastqc directory, not changing your current directory
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
-USAGE="$BASEDIR/qbcl2fastq.usage"			##write a proper usage
+USAGE="$BASEDIR/qbcl2fastq.usage"			
 DATA_VOL_IGF=/project/tgu
 DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
 DEPLOYMENT_BASE_DIR=/www/html/report
@@ -101,7 +101,7 @@ fi
 function submitbcl2fastqJobs {
 	
 	#bcl2Fastq variables
-	local seqrun_directory=$1	#we could obtain this seqrun_directory the global variable INPUT_PATH
+	local seqrun_directory=$1	
 	local lane=$2
 
 
@@ -136,7 +136,7 @@ function submitbcl2fastqJobs {
 }
 
 
-function submitfastqcJobs {			#for this step, u can't do parallelisation according to lane, as the file are not ordered to lanes: just run the function on the already generated fastq files from the earlier function
+function submitfastqcJobs {			
 
 	local seqrun_directory=$1
 
@@ -297,7 +297,7 @@ function submitfastqcJobs {			#for this step, u can't do parallelisation accordi
 		local log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
 		#for testing
 		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
-#		local job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
+		local job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
 		echo "`$NOW`Job ID:$job_id"
 
 	done
@@ -383,7 +383,7 @@ function submitBWAMEMJobs {
 			local fastq_read2_no_ext=`basename $fastq_read2 .gz`
 
 			#get reference FASTA file names
-			local reference_fasta_name=`basename $reference_fasta_index .gz` 			##****is this absolutely necessary..?
+			local reference_fasta_name=`basename $reference_fasta_index .gz` 			
 
 			#get reference FASTA directory path
 			local path_reference_fasta_dir=`dirname $reference_fasta_index`
@@ -468,9 +468,8 @@ function submitBWAMEMJobs {
 				echo "`$NOW`splitFastq.$fastq_name.sh" >> $SETUP_LOG
 				echo -n "`$NOW`" >> $SETUP_LOG
 
-				#echo "qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path"
-				#local job_id=`qsub -o $log_path $script_path`
-				#local job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path`
+				echo "qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path"
+				local job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path`
 				echo $job_id >> $SETUP_LOG
 
 				splitfastq_dependencies="$splitfastq_dependencies:$job_id"
@@ -527,9 +526,8 @@ function submitBWAMEMJobs {
 			echo "`$NOW`submitting submitMappingScript job for $fastq_read1 AND $fastq_read2 :"   >> $SETUP_LOG
 			echo "`$NOW`submitMappingScript.$output_prefix.sh"   >> $SETUP_LOG
 					
-			job_id=`qsub -o $bwa_log_path $bwa_mapping_script`
-			#job_id=`qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script`
-			#echo "qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script"
+			job_id=`qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script`
+			echo "qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script"
 			echo "`$NOW`Job ID:$job_id"  >> $SETUP_LOG
 				
 		done <$seqrun_directory/$flowcell_id.csv
@@ -544,8 +542,8 @@ function submitBWAMEMJobs {
 
 
 SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`
-PATH_RUN_DIR_BCL2FASTQ=$DATA_VOL_IGF/analysis/seqrun/bcl2fastq/2014-10-08				#changed $TODAY here to the date which actually exists in the folder
-#mkdir -p $PATH_RUN_DIR_BCL2FASTQ
+PATH_RUN_DIR_BCL2FASTQ=$DATA_VOL_IGF/analysis/seqrun/bcl2fastq/$TODAY				
+mkdir -p $PATH_RUN_DIR_BCL2FASTQ
 
 
 
@@ -558,14 +556,14 @@ BCL2FASTQ_JOB_ID_LIST=$PATH_RUN_DIR_BCL2FASTQ/bcl2fastq.$SEQRUN_NAME.job_id_list
 
 # BCL2FASTQ RUNS
 #############
-#for LANE in {1..8}
-#do
-#	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $LANE
-#done
+for LANE in {1..8}
+do
+	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $LANE
+done
 
 # FASTQC RUNS
 #############
-#submitfastqcJobs $INPUT_SEQRUN_DIR
+submitfastqcJobs $INPUT_SEQRUN_DIR
 
 # BWA RUNS
 #############

@@ -1,0 +1,35 @@
+{
+  "sshCredentials": {
+
+    "username": "mmuelle1",
+    "password": "*2008/cAm"
+
+  },
+  "emailAccount": [
+
+    {
+        "name": "igf",
+        "smtpHost": "exchange.imperial.ac.uk",
+        "username": "igf",
+        "password": "teSSel14g",
+        "sender": "igf@imperial.ac.uk"
+    }
+
+  ],
+  "storageResource": [
+    {
+        "name": "cx1-grp",
+        "url": "login.cx1.hpc.ic.ac.uk:/groupvol/cgi"
+    },
+    {
+        "name": "cx1-prj",
+        "url": "login.cx1.hpc.ic.ac.uk:/project/tgu"
+    },
+    {
+        "name": "ax3",
+        "url": "ax3.hpc.ic.ac.uk:/ax3-cgi"
+    }
+
+  ]
+
+}

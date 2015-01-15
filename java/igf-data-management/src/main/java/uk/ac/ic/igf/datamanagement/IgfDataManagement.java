@@ -7,27 +7,27 @@ import uk.ac.ic.igf.datamanagement.cmd.Command;
 /**
  * This file is part of IgfDataManagement.
  *
- * IgfDataManagement is free software: you can redistribute it and/or modify
+ * IgfDataManagementTools is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- * NxtGenUtils is distributed in the hope that it will be useful,
+ * IgfDataManagement is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with NxtGenUtils.  If not, see <http://www.gnu.org/licenses/>.
+ * along with IgfDataManagement.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Created by IntelliJ IDEA.
  * User: mmuelle1
- * Date: 21-Oct-2011
+ * Date: 19-Sep-2014
  * Time: 13:52:21
  */
 
 /**
- * Main class that facilitates command line usage of NxtGenUtils Command classes.
+ * Main class that facilitates command line usage of IgfDataManagement Command classes.
  *
  * @author Michael Mueller
  */
@@ -36,27 +36,14 @@ public class IgfDataManagement {
     /**
      * the log4j logger
      */
-    private static Logger logger = Logger.getLogger(NxtGenUtils.class);
+    private static Logger logger = Logger.getLogger(IgfDataManagement.class);
 
     public static String usage =
-            "USAGE: java -jar NxtGenUtils.jar <command_name> <command_arguments>\n" +
+            "USAGE: java -jar IgfDataManagement.jar <command_name> <command_arguments>\n" +
                     "\n" +
                     "Commands:" +
                     "\n" +
-                    "BS-seq\n" +
-                    "   PostProcessBSMapping\n" +
-                    "   FilterBSMapping\n" +
-                    "   ProfileMethylation\n" +
-                    "\n" +
-                    "Phasing\n" +
-                    "   PhaseMapping\n" +
-                    "\n" +
-                    "Other\n" +
-                    "   ClipOverlappingReadPairs\n" +
-                    "   CountReads\n" +
-                    "   SubstractBam\n" +
-                    "   ClipPrimerSequences\n" +
-                    "   GatherGatkBqsrReports\n" +
+                    "GetStorageStats\n" +
                     "";
 
     /**
@@ -83,7 +70,8 @@ public class IgfDataManagement {
 
         //create Command instance and execute command
         try {
-            Command cmd = (Command)Class.forName("org.nxtgenutils.cmd." + className).newInstance();
+
+            Command cmd = (Command)Class.forName("uk.ac.ic.igf.datamanagement.cmd." + className).newInstance();
 
             //log error and exit if no command arguments specified
             if(args.length == 1){

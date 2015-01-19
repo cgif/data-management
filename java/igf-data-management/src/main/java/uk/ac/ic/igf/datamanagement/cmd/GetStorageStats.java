@@ -52,11 +52,11 @@ public class GetStorageStats extends AbstractCommand {
         usage = "Arguments for GetStorageStats\n" +
                 "\n" +
                 "    -c --config <path_to_configuration_json>\n" +
-                "    -p --print [<path_to_output_file>, default STDOUT]\n" +
+                "    -w --write [<path_to_output_file>, default STDOUT]\n" +
                 "   [-e --email <email_account_name>]\n" +
                 "   [-r --emailrecipient <recipient_email_address>,...]\n" +
                 "   [-u --updatedb]\n" +
-                "   [-l --plot <path_to_output_directory, default current working directory>]\n" +
+                "   [-p --plot <path_to_output_directory, default current working directory>]\n" +
                 "   [-f --plotformat <pdf|jpg|png, default pdf>]\n";
     }
 
@@ -66,7 +66,7 @@ public class GetStorageStats extends AbstractCommand {
     public void run(String[] args) {
 
         String jsonConfigPath = null;
-        boolean print = false;
+        boolean write = false;
         boolean email = false;
         String emailAccountName = null;
         Set<String> emailRecipients = new HashSet<>();
@@ -93,9 +93,9 @@ public class GetStorageStats extends AbstractCommand {
                         }
 
 
-                } else if (args[i].equals("--print") || args[i].equals("-p")) {
+                } else if (args[i].equals("--write") || args[i].equals("-w")) {
 
-                    print = true;
+                    write = true;
 
                     //check if argument value present
                     if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
@@ -136,7 +136,7 @@ public class GetStorageStats extends AbstractCommand {
                         exception = true;
                     }
 
-                } else if (args[i].startsWith("--plot") || args[i].equals("-l")) {
+                } else if (args[i].startsWith("--plot") || args[i].equals("-p")) {
 
                     plot = true;
 
@@ -191,8 +191,8 @@ public class GetStorageStats extends AbstractCommand {
         }
 
         //assert required arguments are present
-        if (!print && !update && !plot) {
-            logger.error("At least one output command line argument (-p -u -l) required.");
+        if (!write && !email && !update && !plot) {
+            logger.error("At least one output command line argument (-w -e -u -p) required.");
             exception = true;
         }
 
@@ -206,7 +206,7 @@ public class GetStorageStats extends AbstractCommand {
             exception = true;
         }
 
-        Configuration configuration = Configuration.getInstance();
+        Configuration configuration = Configuration.getInstance(jsonConfigPath);
 
         EmailAccount emailAccount = null;
         if (email && emailAccountName == null) {
@@ -257,7 +257,7 @@ public class GetStorageStats extends AbstractCommand {
 
 
 //        System.out.println("jsonConfigPath = " + jsonConfigPath);
-//        System.out.println("print = " + print);
+//        System.out.println("write = " + write);
 //        System.out.println("email = " + email);
 //        System.out.println("emailAccountName = " + emailAccountName);
 //        System.out.println("Set<String> emailRecipients = " + emailRecipients);
@@ -299,8 +299,8 @@ public class GetStorageStats extends AbstractCommand {
         StorageResourceUsageRetriever retriever = new SshStorageResourceUsageRetriever(configuration.getSshCredentials().getUserName(),
                 configuration.getSshCredentials().getPassword());
 
-        //print
-        if (print) {
+        //write
+        if (write) {
 
             logger.info("Writing storage usage statistics to " + printOutputFilePath);
             StorageResourceUsageWriter writer = null;
@@ -345,6 +345,7 @@ public class GetStorageStats extends AbstractCommand {
 
         }
 
+        System.exit(0);
 
     }
 

@@ -2,7 +2,7 @@
   "sshCredentials": {
 
     "username": "mmuelle1",
-    "password": "*2008/cAm"
+    "password": ""
 
   },
   "emailAccount": [
@@ -11,7 +11,7 @@
         "name": "igf",
         "smtpHost": "exchange.imperial.ac.uk",
         "username": "igf",
-        "password": "teSSel14g",
+        "password": "",
         "sender": "igf@imperial.ac.uk"
     }
 

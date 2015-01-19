@@ -8,9 +8,10 @@
     <fileSets>
 
         <fileSet>
-            <directory>src/main/resources</directory>
+            <directory>src/main/resources/config</directory>
             <includes>
                 <include>log4j.properties</include>
+                <include>igf-data-management.json</include>
             </includes>
             <outputDirectory>/config</outputDirectory>
         </fileSet>

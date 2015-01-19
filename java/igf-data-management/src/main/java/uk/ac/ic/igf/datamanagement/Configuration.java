@@ -52,14 +52,14 @@ public class Configuration  {
      *
      * @return the configuration singleton instance
      */
-    public static Configuration getInstance() {
+    public static Configuration getInstance(String pathToConfigJson) {
 
         //create the singleton instance if it doesn't exist yet
         if (ourInstance == null) {
 
             try {
 
-                ourInstance = new Configuration("/home/mmuelle1/git/data-management/java/igf-data-management/src/main/resources/config/igf-data-management.json");
+                ourInstance = new Configuration(pathToConfigJson);
 
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
@@ -161,7 +161,7 @@ public class Configuration  {
 
     public static void main(String[] args) {
 
-        Configuration conf = Configuration.getInstance();
+        Configuration conf = Configuration.getInstance("/home/mmuelle1/git/data-management/java/igf-data-management/src/main/resources/config/igf-data-management.json");
 
 
         for(StorageResource rsrc : conf.getStorageResources()){

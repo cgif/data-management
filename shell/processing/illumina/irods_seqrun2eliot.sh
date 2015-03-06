@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###
-#these lines were added for testing because our current run is  already registered in iiRODS and first deleting it from there would take quite a while
+#these lines were added for testing because our current run is  already registered in iRODS and first deleting it from there would take quite a while
 #for that reason, i have sought to create 'another run'(copy of the one the one on the directory)
 cp -r /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/ /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW
 mv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXX.csv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
@@ -21,14 +21,8 @@ cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk '
 
 
 ###
-
-
 ORWELL_SEQRUNS_DIR=/home/igf/seqrun/illumina
 NOW="date +%m/%d/%Y_%H:%M:%S"
-
-
-
-
 
 #get all the runs in the sequencing-runs-directory
 echo "`$NOW` getting runs in $ORWELL_SEQRUNS_DIR..."
@@ -40,9 +34,6 @@ iinit mmuelle1
 #getting runs already registered in iRODS
 echo "`$NOW` getting runs already registered in iRODS..."
 IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		#NR>1 is used to skip the line in irods_ils that shows the collection name/title
-
-
-
 
 #getting unregistered runs
 UNREGISTERED_RUNS=${DIRECTORY_RUNS[@]}				# i)first, assume every RUN in the run-directory is unregistered

@@ -1,18 +1,13 @@
 
 USAGE
 
-    qbwape -i <sequencing-run-directory> 
-           -r <deploy cram files to irods on eliot - T or F>                
+    qbwape  -i <path_to_sequencing_run_directory> 
+           [-d]                
 	
 DESCRIPTION
 
-	-i	Absolute path to the sequencing_run directory containing 
-                the files required for conversion of .bcl files to fastq files.
-		Currently, this is /project/tgu/rawdata/seqrun/<RUN_NAME>
-		This parameter MUST to be defined.
-
-
-	-r	T or F - whether to deploy cram files to irods on eliot.
-                The default is F, for false.
-                This parameter is optional; if not defined, the default value is considered.
+	-i	Absolute path to the sequencing run directory containing 
+        the files required for conversion of BCL files to CRAM files.
+		
+	-d	If specified, CRAM files are deployed to iRODS on eliot.
 

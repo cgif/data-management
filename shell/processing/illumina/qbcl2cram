@@ -1,14 +1,8 @@
 #!/bin/bash
 #
-# sets up directory structure and generates, configures and submits scripts to run;
-# bcl2fastq conversion, 
-# generate fastqc reports, 
-# split fastq files(bwa), 
-# and the submit mapping script which; 
-#		carries out read mapping, merging
-#		cram file generation
-#		deployment of cram files into irods on eliot
-#		summanry generation
+# sets up directory structure and generates, configures and submits scripts to run
+# bcl2fastq conversion, generate fastqc reports, map reads to a reference geneome,
+# convert BAM to CRAM files and deploy CRAM files into iRODS on eliot
 #
 
 #CONFIGURATION
@@ -20,11 +14,9 @@ NOW="date +%Y-%m-%d%t%T%t"
 #today
 TODAY=`date +%Y-%m-%d`
 
-						
-
 #returns absolute path to qfastqc directory, not changing your current directory
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
-USAGE="$BASEDIR/qbcl2fastq.usage"			
+USAGE="$BASEDIR/qbcl2cram.usage"			
 DATA_VOL_IGF=/project/tgu
 DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
 DEPLOYMENT_BASE_DIR=/www/html/report
@@ -54,24 +46,19 @@ GROUP_VOL_CGI=/groupvol/cgi
 BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
 SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
 
-
-
-
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 
 
-
-
 #COMMAND LINE ARGS
 ##################
-#option -r is asks whether to deploy to irods or not; default is F
 
+IRODS_DEPLOYMENT="F"
 
-while getopts "i:r:h" option; do
+while getopts "i:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
-	r) IRODS_DEPLOYMENT="$OPTARG";;				
+	d) IRODS_DEPLOYMENT="T";;				
 	h) cat "$USAGE"; exit 0;;
 	[?]) cat "$USAGE"; exit 1;;
 esac
@@ -84,13 +71,6 @@ then
 	exit 1
 fi
 
-if [ -z $IRODS_DEPLOYMENT ]
-then
-	IRODS_DEPLOYMENT="F"
-fi
-
-
-
 
 #FUNCTIONS
 ##########
@@ -101,8 +81,6 @@ function submitbcl2fastqJobs {
 	#bcl2Fastq variables
 	local seqrun_directory=$1	
 	local lane=$2
-
-
 
 	#BCL2FASTQ CONVERSION
 	#####################

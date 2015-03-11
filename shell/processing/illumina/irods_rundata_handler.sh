@@ -23,7 +23,7 @@ PATH_SEQRUNS_DIR_IRODS=/igfZone/home/IRODS_USER
 RESOURCE=orwellResc
 
 
-TRANSFER_DIR=/home/igf/transfer/irods_tars
+TRANSFER_DIR=/home/igf/transfer
 DATA_HANDLING_LOG_IRODS=/home/igf/log/irods_rundata_handler.${RUN_NAME}.log
 
 HOST=login.cx1.hpc.ic.ac.uk

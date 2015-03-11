@@ -25,13 +25,14 @@
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 PATH_SEQRUNS_DIR=/home/igf/seqrun/illumina
 NOW="date +%Y-%m-%d%t%T%t"
+IRODS_PWD=igf
 
 #get all the runs in the sequencing-runs-directory
 #echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
 DIRECTORY_RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
 
 #log into irods with iinit [password]
-iinit mmuelle1
+iinit $IRODS_PWD
 
 #getting runs already registered in iRODS
 #NR>1 is used to skip the line in irods_ils that shows the collection name/title
@@ -88,7 +89,4 @@ else
 		fi
 	done
 fi
-
-
-
 

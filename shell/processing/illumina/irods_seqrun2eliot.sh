@@ -25,11 +25,15 @@
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 PATH_SEQRUNS_DIR=/home/igf/seqrun/illumina
 NOW="date +%Y-%m-%d%t%T%t"
+IRODS_USER=igf
 IRODS_PWD=igf
+
+SSH_USER=mmuelle1
 
 #get all the runs in the sequencing-runs-directory
 #echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
-DIRECTORY_RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
+RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
+
 
 #log into irods with iinit [password]
 iinit $IRODS_PWD
@@ -37,12 +41,15 @@ iinit $IRODS_PWD
 #getting runs already registered in iRODS
 #NR>1 is used to skip the line in irods_ils that shows the collection name/title
 #echo "`$NOW` getting runs already registered in iRODS..."
-IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		
+
+REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
+
 
 #getting unregistered runs
-UNREGISTERED_RUNS=${DIRECTORY_RUNS[@]}				
+UNREGISTERED_RUNS=${RUNS[@]}		
+
 #echo "`$NOW` getting unregistered runs..."								
-if [ ${#IRODS_RUNS[@]} -eq 0 ]							
+if [ ${#REGISTERED_RUNS[@]} -eq 0 ]							
 then
 
 	#do nothing
@@ -51,8 +58,9 @@ then
 else 
 	
 	#delete runs already registered in iRODS
-	for RUN in ${IRODS_RUNS[@]}
+	for RUN in ${REGISTERED_RUNS[@]}
 	do
+			echo $RUN
 			UNREGISTERED_RUNS=("${UNREGISTERED_RUNS[@]/$RUN}")		# ii) then, 
 	done
 	
@@ -71,22 +79,25 @@ else
 
 	for RUN in $UNREGISTERED_RUNS
 	do
+	
 		#for each run, check if its run has completed...
 		#check for presence of 'RTAComplete.txt'...
 		RTA_COMPLETE_LOG=$PATH_SEQRUNS_DIR/$RUN/RTAComplete.txt
-		if [ -x $RTA_COMPLETE_LOG ]				#we check if it exists
+		if [ -x $RTA_COMPLETE_LOG ]
 		then
 		
-			#...if it exists make sure it is not empty
+			#...if it exists make sure it is not empty...
 			if [ -s $RTA_COMPLETE_LOG ]
 			then
 			
-				#register in iRODS
+				#... and start run processing
 				echo "`$NOW` Run $RUN complete. Starting processing..."
-				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN"
+				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER"
+				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER
 	
 			fi
 		fi
 	done
+	
 fi
 

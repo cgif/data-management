@@ -3,12 +3,12 @@
 ###
 #these lines were added for testing because our current run is  already registered in iRODS and first deleting it from there would take quite a while
 #for that reason, i have sought to create 'another run'(copy of the one the one on the directory)
-cp -r /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/ /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW
-mv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXX.csv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-echo -n "" > /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'NR<2{print}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD12"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD36"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
+#cp -r /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/ /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW
+#mv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXX.csv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
+#echo -n "" > /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
+#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'NR<2{print}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
+#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD12"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
+#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD36"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
 
 
 
@@ -21,60 +21,88 @@ cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk '
 
 
 ###
-ORWELL_SEQRUNS_DIR=/home/igf/seqrun/illumina
-NOW="date +%m/%d/%Y_%H:%M:%S"
+BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
+PATH_SEQRUNS_DIR=/home/igf/seqrun/illumina
+NOW="date +%Y-%m-%d%t%T%t"
+IRODS_USER=igf
+IRODS_PWD=igf
+
+SSH_USER=mmuelle1
+>>>>>>> dd6191004ceb649d73bf61777159681f9d04e078
 
 #get all the runs in the sequencing-runs-directory
-echo "`$NOW` getting runs in $ORWELL_SEQRUNS_DIR..."
-DIRECTORY_RUNS=`ls --color=never $ORWELL_SEQRUNS_DIR`
+#echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
+RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
+
 
 #log into irods with iinit [password]
-iinit mmuelle1
+iinit $IRODS_PWD
 
 #getting runs already registered in iRODS
+<<<<<<< HEAD
 echo "`$NOW` getting runs already registered in iRODS..."
 IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		#NR>1 is used to skip the line in irods_ils that shows the collection name/title
+=======
+#NR>1 is used to skip the line in irods_ils that shows the collection name/title
+#echo "`$NOW` getting runs already registered in iRODS..."
+
+REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
+
+>>>>>>> dd6191004ceb649d73bf61777159681f9d04e078
 
 #getting unregistered runs
-UNREGISTERED_RUNS=${DIRECTORY_RUNS[@]}				# i)first, assume every RUN in the run-directory is unregistered
-echo "`$NOW` getting unregistered runs..."								
-if [ ${#IRODS_RUNS[@]} -eq 0 ]							
-then 
-	echo "empty; no runs have been reigstered to irods"
+UNREGISTERED_RUNS=${RUNS[@]}		
+
+#echo "`$NOW` getting unregistered runs..."								
+if [ ${#REGISTERED_RUNS[@]} -eq 0 ]							
+then
+
+	#do nothing
+	echo -n ""
+
 else 
-	for run in ${IRODS_RUNS[@]}
+	
+	#delete runs already registered in iRODS
+	for RUN in ${REGISTERED_RUNS[@]}
 	do
-			UNREGISTERED_RUNS=("${UNREGISTERED_RUNS[@]/$run}")		# ii) then, sequentially delete those runs which are already registered in iRODS, so that we remain with the unregistered
+			echo $RUN
+			UNREGISTERED_RUNS=("${UNREGISTERED_RUNS[@]/$RUN}")		# ii) then, 
 	done
+	
 fi
 
 
 #of all the unregistered runs, determine those which have completed, and then register them into iRODS
 if [ ${#UNREGISTERED_RUNS[@]} -eq 0 ]							
 then 
-	echo "all runs in the directory have already been reigstered to irods"
-	exit;
-else
-	for run in $UNREGISTERED_RUNS
-	do
-		#foreach run, check if its run has completed; if 'RTAComplete.txt' has been written. We believe this is the last file to be written in a sequencing RUN directory
-		rta_complete_log=$ORWELL_SEQRUNS_DIR/$run/RTAComplete.txt
-		if [ -x $rta_complete_log ]				#we check if it exists
-		then
-			echo "RTA log exists"
-			if [ -s $rta_complete_log ]			#we additionally check that it's not empty (it could be created earlier on but only written-to at the end)
-			then
-				echo "RTA log not empty"
-				echo "$run complete; registering run directory into iRODS"
 
-				#send the RUN data for processsing by the data_handling script			
-				/home/mkanwagi/irods_rundata_handler.sh $ORWELL_SEQRUNS_DIR/$run
+	#do nothing
+	echo -n ""
+	exit 0;
+	
+else
+
+	for RUN in $UNREGISTERED_RUNS
+	do
+	
+		#for each run, check if its run has completed...
+		#check for presence of 'RTAComplete.txt'...
+		RTA_COMPLETE_LOG=$PATH_SEQRUNS_DIR/$RUN/RTAComplete.txt
+		if [ -x $RTA_COMPLETE_LOG ]
+		then
+		
+			#...if it exists make sure it is not empty...
+			if [ -s $RTA_COMPLETE_LOG ]
+			then
+			
+				#... and start run processing
+				echo "`$NOW` Run $RUN complete. Starting processing..."
+				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER"
+				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER
 	
 			fi
 		fi
 	done
+	
 fi
-
-
-
 

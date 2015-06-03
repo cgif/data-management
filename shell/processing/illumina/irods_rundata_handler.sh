@@ -40,8 +40,8 @@ echo -n "" >> $LOG
 
 
 #redirect stdout and stderr to log file
-#exec > $LOG
-#exec 2>&1
+exec > $LOG
+exec 2>&1
 
 #generating tar archive of the files required for BCL-to-fastq conversion:
 # * Data directory
@@ -55,7 +55,9 @@ WORKING_DIR=$PWD
 #get SampleSheet filename
 #for HiSeq runs the sample sheet is named after the flowcell -> extract flow cell ID from run name
 #for MiSeq runs the sample sheet file is names SampleSheet.csv. Miseq run names contain a '-' in the last token.
-SAMPLE_SHEET_PREFIX=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if($prefix =~ /-/){ $prefix=SampleSheet;  }else{ $prefix=~s/^[AB]//; } print $prefix'`
+#SAMPLE_SHEET_PREFIX=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if($prefix =~ /-/){ $prefix=SampleSheet;  }else{ $prefix=~s/^[AB]//; } print $prefix'`
+SAMPLE_SHEET_PREFIX="SampleSheet"
+
 
 #create TAR archive of files and folders required for BCL2FASTQ conversion (Data folder, runParameters.xml RunInfo.xml and samplesheet)
 echo "`$NOW` Creating TAR archive..."
@@ -154,7 +156,7 @@ rm $TRANSFER_DIR/$RUN_NAME.tar*
 
 #execute the bcl to cram script
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
-#ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d"
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d"
 
 
  

@@ -6,8 +6,8 @@ USAGE
 	
 DESCRIPTION
 
-	-i	Absolute path to the sequencing run directory containing 
+    -i  Absolute path to the sequencing run directory containing 
         the files required for conversion of BCL files to CRAM files.
 		
-	-d	If specified, CRAM files are deployed to iRODS on eliot.
+    -d  If specified, CRAM files are deployed to iRODS on Eliot.
 

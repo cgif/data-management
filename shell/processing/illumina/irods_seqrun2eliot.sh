@@ -28,7 +28,6 @@ IRODS_USER=igf
 IRODS_PWD=igf
 
 SSH_USER=mmuelle1
->>>>>>> dd6191004ceb649d73bf61777159681f9d04e078
 
 #get all the runs in the sequencing-runs-directory
 #echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
@@ -39,16 +38,12 @@ RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
 iinit $IRODS_PWD
 
 #getting runs already registered in iRODS
-<<<<<<< HEAD
 echo "`$NOW` getting runs already registered in iRODS..."
 IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		#NR>1 is used to skip the line in irods_ils that shows the collection name/title
-=======
 #NR>1 is used to skip the line in irods_ils that shows the collection name/title
 #echo "`$NOW` getting runs already registered in iRODS..."
 
 REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
-
->>>>>>> dd6191004ceb649d73bf61777159681f9d04e078
 
 #getting unregistered runs
 UNREGISTERED_RUNS=${RUNS[@]}		

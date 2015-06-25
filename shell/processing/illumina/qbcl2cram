@@ -28,7 +28,7 @@ TMP_SPACE_GB_BCL2FASTQ=100
 THREADS_PER_RUN_BCL2FASTQ=2
 
 #TARBCL2FASTQ
-TARRESULTS_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/pre_processing/tarresultsbcl2fastq.sh
+TARRESULTS_SCRIPT_DIR=$BASEDIR/tarresultsbcl2fastq.sh
 DEPLOYMENT_TAR_BASE_DIR=/data/www/html/report/data
 
 #SPLIT FASTQ
@@ -156,7 +156,8 @@ function submitTarResultsBcl2fastq {
                         local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
                         #get project_tag
                         local project_name=`echo $sampleSheetRow | cut -f10 -d ','| perl -pe 's/\s//g'`
-
+			
+			# create a file with sample_lane foreach project_tag
                         echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
 
                 done < $path_sample_sheet_reformatted
@@ -209,10 +210,15 @@ function submitTarResultsBcl2fastq {
 
 			#submit job 
 			local log_output_path=`echo $tarresults_script | perl -pe 's/\.sh/\.log/g'`
+			echo -n "" > $log_output_path			
+			chmod 770 $log_output_path
+			echo -n "`$NOW`submitting tarresult job: " 
+			echo "$tarresults_script"
+
 
 			local job_id=null
-			job_id=`qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_path`
-			echo "qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_path"
+		  	job_id=`qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_script`
+			echo "qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_script"
 			echo "`$NOW`Job ID:$job_id"
 		done
 }
@@ -234,6 +240,7 @@ function submitfastqcJobs {
 			
 		#create and set permissions for run directory
 		project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
+		chmod -R 770 $DATA_VOL_IGF/runs/$project
 		mkdir -m 770 -p $project_runs_dir
 		ms_runs_dir=$project_runs_dir/multisample
 		mkdir -m 770 -p $ms_runs_dir
@@ -241,6 +248,8 @@ function submitfastqcJobs {
 		#create and set permissions for results project parent directory
 		project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
 		mkdir -m 770 -p $project_results_dir
+		# aggiunto io
+		chmod -R 770 $project_results_dir	
 		mkdir -m 770 -p $project_results_dir/multisample
 
 		local job_id_list=$ms_runs_dir/job_id_list.$SEQRUN_NAME.txt
@@ -799,7 +808,8 @@ PATH_ANALYSIS_DIR_BCL2FASTQ=$DATA_VOL_IGF/analysis/seqrun/$SEQRUN_NAME/bcl2fastq
 PATH_RESULTS_DIR_BCL2FASTQ=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY				
 PATH_RAWDATA_DIR=$DATA_VOL_IGF/rawdata
 
-mkdir -p $PATH_RUN_DIR_BCL2FASTQ
+mkdir -m 770 -p $PATH_RUN_DIR_BCL2FASTQ
+chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
 mkdir -p $PATH_ANALYSIS_DIR_BCL2FASTQ
 
 

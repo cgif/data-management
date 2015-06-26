@@ -136,7 +136,8 @@ function submitbcl2fastqJobs {
 function submitTarResultsBcl2fastq {
                 local path_sample_sheet_reformatted=$1
                 local bcl2fastq_job_id_list=$2
-
+	
+		chmod 660 $bcl2fastq_job_id_list $path_sample_sheet_reformatted
 		# for TEST
                 #echo $path_sample_sheet_reformatted
                 #echo $bcl2fastq_job_id_list
@@ -158,10 +159,12 @@ function submitTarResultsBcl2fastq {
                         local project_name=`echo $sampleSheetRow | cut -f10 -d ','| perl -pe 's/\s//g'`
 			
 			# create a file with sample_lane foreach project_tag
+			chmod 770 $PATH_RUN_DIR_BCL2FASTQ
                         echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
 
                 done < $path_sample_sheet_reformatted
-
+		 
+		
 
                 for project_file in `ls --color=never $PATH_RUN_DIR_BCL2FASTQ | grep .prj`
                 do
@@ -170,6 +173,7 @@ function submitTarResultsBcl2fastq {
 
                         for projectTagRow in `cat $PATH_RUN_DIR_BCL2FASTQ/$project_file | sort | uniq`
                         do
+				chmod 660 $PATH_RUN_DIR_BCL2FASTQ/$project_file
                                 local lane=`echo $projectTagRow | perl -pe 's/\s//g'`
 				# for TEST
                                 #echo "# File project "$lane"#"
@@ -211,7 +215,6 @@ function submitTarResultsBcl2fastq {
 			#submit job 
 			local log_output_path=`echo $tarresults_script | perl -pe 's/\.sh/\.log/g'`
 			echo -n "" > $log_output_path			
-			chmod 770 $log_output_path
 			echo -n "`$NOW`submitting tarresult job: " 
 			echo "$tarresults_script"
 
@@ -220,6 +223,7 @@ function submitTarResultsBcl2fastq {
 		  	job_id=`qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_script`
 			echo "qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $tarresults_script"
 			echo "`$NOW`Job ID:$job_id"
+			chmod 660 $log_output_path
 		done
 }
 
@@ -240,8 +244,8 @@ function submitfastqcJobs {
 			
 		#create and set permissions for run directory
 		project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-		chmod -R 770 $DATA_VOL_IGF/runs/$project
 		mkdir -m 770 -p $project_runs_dir
+		chmod -R 770 $DATA_VOL_IGF/runs/$project
 		ms_runs_dir=$project_runs_dir/multisample
 		mkdir -m 770 -p $ms_runs_dir
 						

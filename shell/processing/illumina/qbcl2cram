@@ -207,6 +207,7 @@ function submitTarResultsBcl2fastq {
                         path_project_tag_dir=$DATA_VOL_IGF/rawdata/$project_tag/fastq
                         sed -i -e "s/#pathProjectTagDir/${path_project_tag_dir//\//\\/}/" $tarresults_script
                         sed -i -e "s/#seqRunDate/$SEQRUN_DATE/" $tarresults_script
+                        sed -i -e "s/#seqRunName/$SEQRUN_NAME/" $tarresults_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentTarPath/${DEPLOYMENT_TAR_BASE_DIR//\//\\/}/" $tarresults_script

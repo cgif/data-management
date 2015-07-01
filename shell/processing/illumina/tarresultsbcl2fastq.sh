@@ -22,6 +22,7 @@ TODAY=`date +%Y-%m-%d`
 #set up script
 PATH_PROJECT_TAG_DIR=#pathProjectTagDir
 SEQ_RUN_DATE=#seqRunDate
+SEQ_RUN_NAME=#seqRunName
 PATH_TO_DESTINATION=#pathToDestination
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
@@ -45,7 +46,7 @@ echo  $MD5_STATUS
 if [[ $MD5_STATUS == 'FAILED' ]]
 then
         #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_DATE TAR Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_DATE failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+        echo -e "subject:Sequencing Run $SEQ_RUN_NAME TAR Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
 
         #...and exit
         exit 1
@@ -70,7 +71,7 @@ echo  $MD5_STATUS
 if [[ $MD5_STATUS == 'FAILED' ]]
 then
         #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_DATE Deploying Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_DATE failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+        echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
 
         #...and exit
         exit 1

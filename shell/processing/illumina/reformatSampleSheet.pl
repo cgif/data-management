@@ -144,7 +144,9 @@ while(<IN>){
 			#Operator
 			print OUT $operator.",";
 			#SampleProject
-			print OUT $tokens[$sample_project_idx]."\n";
+		        my @column_project = split(':', $tokens[$sample_project_idx]);	
+#			print "SampleProject: $column_project[0]\n";
+			print OUT $column_project[0]."\n";
 		
 		}
 				

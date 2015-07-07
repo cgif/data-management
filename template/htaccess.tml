@@ -1,0 +1,5 @@
+## funt this file into the rnd dir
+AuthName "IGF Restricted"
+AuthType Basic
+AuthUserFile /www/html/report/project/#project_tag/.htpasswd
+Require valid-user

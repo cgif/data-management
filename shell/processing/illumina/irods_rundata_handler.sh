@@ -1,6 +1,4 @@
 #!/bin/bash
-
-
 #This script is called by ir0ds_seqrun2eliot.sh to handle the processing of
 #a completed sequencing run.
 #
@@ -35,6 +33,11 @@ HOST=login.cx1.hpc.ic.ac.uk
 DATA_VOL_IGF=/project/tgu
 PATH_BCL2CRAM_SCRIPT=/home/mmuelle1/git/data-management/shell/processing/illumina/qbcl2cram
 
+DEPLOYMENT_HOST=eliot.med.ic.ac.uk
+DEPLOYMENT_PATH=/www/html/report/project
+CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
+CUSTOMERS_RUNS_FILE=customerInfo.csv
+
 #initialise log file
 echo -n "" >> $LOG
 
@@ -48,6 +51,7 @@ exec 2>&1
 # * runParameters.xml
 # * RunInfo.xml
 # * SampleSheet.csv
+# * customerInfo.csv
 
 echo "`$NOW` Processing sequencing run $RUN_NAME..."
 WORKING_DIR=$PWD
@@ -77,8 +81,41 @@ do
 	fi
 done
 
-#creat TAR archive
-tar cvf $TRANSFER_DIR/$RUN_NAME.tar Data runParameters.xml RunInfo.xml $SAMPLE_SHEET_PREFIX.csv > /dev/null
+#creates deployment results structure on eliot webserver
+#convert sample sheet & customers info file
+#dos2unix $SAMPLE_SHEET_PREFIX.csv
+#dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
+#get project information from Sample sheet (project_tag:username)
+echo -n "" > $CUSTOMERS_RUNS_FILE
+for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f9| sort | uniq | sed 1d`
+do
+	#for TEST
+	#echo "$project_info PROJECT INFO FILE"
+	project_tag=`echo $project_info|cut -d ':' -f1`
+	project_usr=`echo $project_info|cut -d ':' -f2`
+	#get customer information from customer file Perfect Matching!!
+	echo -n $project_tag"," >> $CUSTOMERS_RUNS_FILE
+	customers_info=`grep -w $project_usr $CUSTOMERS_FILEPATH/lims_user.csv`
+	if [[ -z $customers_info ]]; then
+		echo "`$NOW` ERROR: customer for project $project_tag is unknown"
+		#send email alert...
+		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+		exit 1
+	fi
+	echo $customers_info >> $CUSTOMERS_RUNS_FILE
+done
+if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
+	then
+		echo "`$NOW` ERROR: Required file $CUSTOMERS_RUNS_FILE  missing... aborting"
+		#send email alert...
+		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+		exit 1
+	fi
+
+#creates TAR archive
+tar cvf $TRANSFER_DIR/$RUN_NAME.tar Data runParameters.xml RunInfo.xml $SAMPLE_SHEET_PREFIX.csv $CUSTOMERS_RUNS_FILE > /dev/null
+#for TEST
+#tar cvf $TRANSFER_DIR/$RUN_NAME.tar runParameters.xml RunInfo.xml $SAMPLE_SHEET_PREFIX.csv $CUSTOMERS_RUNS_FILE > /dev/null
 
 #generate an md5 checksum for the tarball
 #need to change to location of archive to generate md5
@@ -101,6 +138,7 @@ chmod o+rx $TRANSFER_DIR/$RUN_NAME.tar $TRANSFER_DIR/$RUN_NAME.tar.md5
 imkdir $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME
 ireg -k -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar
 ireg -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar.md5 $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5
+
 
 #change to original working dir
 cd $WORKING_DIR		
@@ -157,9 +195,5 @@ rm $TRANSFER_DIR/$RUN_NAME.tar*
 #execute the bcl to cram script
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
 ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d"
-
-
- 
-
 
 

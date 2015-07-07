@@ -22,6 +22,14 @@ DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
 DEPLOYMENT_BASE_DIR=/www/html/report
 QUEUE=pqcgi
 
+# DEPLOYMENT SETTINGS
+CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
+DEPLOYMENT_PATH=/www/html/report/project
+HTACCESS=.htaccess
+TEMPLATE_PATH=$BASEDIR/../../../template
+HTACCESS_TML=$TEMPLATE_PATH/htaccess.tml
+
+
 #BCL2FASTQ
 WALLTIME_HOURS_PER_JOB_BCL2FASTQ=72
 TMP_SPACE_GB_BCL2FASTQ=100
@@ -95,7 +103,7 @@ function submitbcl2fastqJobs {
 	local bases_mask=`$BASEDIR/makeBasesMask.pl $path_sample_sheet $INPUT_SEQRUN_DIR/RunInfo.xml $lane`
 			
 	#create summary directory on deployment server
-	local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane}
+	local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
 	
 	echo -n $lane >> $BCL2FASTQ_JOB_ID_LIST
 
@@ -156,7 +164,9 @@ function submitTarResultsBcl2fastq {
                         #get current lane...
                         local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
                         #get project_tag
-                        local project_name=`echo $sampleSheetRow | cut -f10 -d ','| perl -pe 's/\s//g'`
+                        #local project_name=`echo $sampleSheetRow | cut -f10 -d ','| cut -f1 -d ':' |perl -pe 's/\s//g'`
+                        local project_name=`echo $sampleSheetRow | cut -f10 -d ',' |perl -pe 's/\s//g'`
+                        #local customer_name=`echo $sampleSheetRow | cut -f10 -d ','| cut -f2 -d ':' |perl -pe 's/\s//g'`
 			
 			# create a file with sample_lane foreach project_tag
 			chmod 770 $PATH_RUN_DIR_BCL2FASTQ
@@ -208,6 +218,10 @@ function submitTarResultsBcl2fastq {
                         sed -i -e "s/#pathProjectTagDir/${path_project_tag_dir//\//\\/}/" $tarresults_script
                         sed -i -e "s/#seqRunDate/$SEQRUN_DATE/" $tarresults_script
                         sed -i -e "s/#seqRunName/$SEQRUN_NAME/" $tarresults_script
+                        sed -i -e "s/#runDirBcl2Fastq/${PATH_RUN_DIR_BCL2FASTQ//\//\\/}/" $tarresults_script
+                        sed -i -e "s/#customerFilePath/${INPUT_SEQRUN_DIR//\//\\/}/" $tarresults_script
+                        sed -i -e "s/#projectTag/$project_tag/" $tarresults_script
+                        sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $tarresults_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentTarPath/${DEPLOYMENT_TAR_BASE_DIR//\//\\/}/" $tarresults_script
@@ -235,7 +249,7 @@ function submitfastqcJobs {
 	local path_sample_sheet_reformatted=$2
 
 	#create directory structure for each project in sample sheet
-	for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10  | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
+	for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10 |perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
 	do
 	
 		#create and set permissions for analysis project parent directory
@@ -302,7 +316,7 @@ function submitfastqcJobs {
 			#..for samples in current lane...
 			local sample_name=`echo $line | cut -f3 -d ',' | perl -pe 's/\s//g'`
 			local index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
-			local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`			
+			local project_name=`echo $line | cut -f10 -d ',' | cut -d ':' -f1 | perl -pe 's/\s//g'`			
 							
 			local path_reads_dir=$DATA_VOL_IGF/rawdata/$project_name/fastq/$SEQRUN_DATE/$sample_name
 			local fastq_read1=${SEQRUN_NAME}_${index}_L00${lane}_R1_001.fastq.gz
@@ -364,7 +378,7 @@ function submitfastqcJobs {
 	#submit summary job for each project
 	####################################
 	
-	for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10  | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
+	for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
 	do
 
 		echo "`$NOW`creating and submitting job script for summary of results"
@@ -565,7 +579,7 @@ function submitBWAMEMJobs {
 	local seqrun_directory=$1
 		
 	#create deployment directories
-	for project in `sed 1d $seqrun_directory/$FLOWCELL_ID.csv| cut -d ',' -f10  | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
+	for project in `sed 1d $seqrun_directory/$FLOWCELL_ID.csv| cut -d ',' -f10 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
 	do
 	
 		mkdir -m 770 -p $DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample	
@@ -616,6 +630,7 @@ function submitBWAMEMJobs {
 			#..for samples in current lane...
 			local sample_name=`echo $line | cut -f3 -d ',' | perl -pe 's/\s//g'`
 			local index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
+			#local project_name=`echo $line | cut -f10 -d ',' | cut -d ':' -f1 | perl -pe 's/\s//g'`			
 			local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`			
 							
 			local path_reads_dir=$DATA_VOL_IGF/rawdata/$project_name/fastq/$sample_name
@@ -799,6 +814,36 @@ SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`
 SEQRUN_DATE=`echo $SEQRUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;
 FLOWCELL_ID=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if(!($prefix =~ /-/)){ $prefix=~s/^[AB]//; } print $prefix'`
 
+CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
+
+#DEPLOYMENT STRUCTURE
+#creates deployment results structure on eliot webserver
+while read row
+        do
+        project_tag=`echo $row|cut -d ',' -f1`
+        #better to do on cx1 on the cluster
+        #checks if the project directory already exists in the web server
+	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]";then
+		#none to be done
+               	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
+	else
+		#creates password proctected project_tag dir
+		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
+		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag"
+		cp $HTACCESS_TML $HTACCESS
+		#configure .htaccess
+		sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
+		scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
+		ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS"
+		project_usr=`echo $row|cut -d ',' -f3`	
+		#for Test
+		#echo "USER: $project_usr"
+		project_passwd=`echo $row|cut -d ',' -f4`	
+		#for Test
+		#echo "PASSW: $project_passwd"
+		ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bcm .htpasswd $project_usr $project_passwd"
+	fi
+done <$CUSTOMERS_RUNS_FILE
 
 #extract sample sheet name from run name:
 #HiSeq run: the sample sheet is named after the flowcell ID; the flowcell ID
@@ -816,7 +861,6 @@ PATH_RAWDATA_DIR=$DATA_VOL_IGF/rawdata
 mkdir -m 770 -p $PATH_RUN_DIR_BCL2FASTQ
 chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
 mkdir -p $PATH_ANALYSIS_DIR_BCL2FASTQ
-
 
 
 #we need a bcl2fastq job-list file for split_Fastq_dependencies, but MOST IMPORTANTLY, knowing the lane that belonged to a certain bcl2fastq job enables
@@ -844,8 +888,8 @@ PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
 
-for LANE in $LANES
-#for LANE in {1..8}
+#for LANE in $LANES
+for LANE in {1..8}
 do
 
 	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED $LANE
@@ -865,5 +909,5 @@ exit 0
 # BWA RUNS
 #############
 
-submitBWAMEMJobs $INPUT_SEQRUN_DIR
+#submitBWAMEMJobs $INPUT_SEQRUN_DIR
 

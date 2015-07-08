@@ -93,9 +93,11 @@ customer_name=`echo $customers_info|cut -d ',' -f2`
 customer_username=`echo $customers_info|cut -d ',' -f3`
 customer_passwd=`echo $customers_info|cut -d ',' -f4`
 customer_email=`echo $customers_info|cut -d ',' -f5`
-echo "value customer #$customer_email#"
+#for TEST
+#echo "value customer #$customer_email#"
 if [[ $customer_email != *"@"* ]]; then
 	#send email alert...
+	#echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
 fi
 customer_mail=customer_mail.$PROJECT_TAG

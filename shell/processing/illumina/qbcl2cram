@@ -23,7 +23,6 @@ DEPLOYMENT_BASE_DIR=/www/html/report
 QUEUE=pqcgi
 
 # DEPLOYMENT SETTINGS
-IGF_USER=igf
 CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
 DEPLOYMENT_PATH=/www/html/report/project
 HTACCESS=.htaccess
@@ -256,9 +255,9 @@ function submitfastqcJobs {
 	do
 	
 		#create and set permissions for analysis project parent directory
-		project_analysis_dir=$DATA_VOL_IGF/analysis/$project/fastqc/$TODAY
-		mkdir -m 770 -p $project_analysis_dir		
-		mkdir -m 770 -p $project_analysis_dir/multisample		
+		#project_analysis_dir=$DATA_VOL_IGF/analysis/$project/fastqc/$TODAY
+		#mkdir -m 770 -p $project_analysis_dir		
+		#mkdir -m 770 -p $project_analysis_dir/multisample		
 			
 		#create and set permissions for run directory
 		project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
@@ -327,7 +326,6 @@ function submitfastqcJobs {
 			
 			#create output directory for the QC reports for each file
 			echo "`$NOW`creating output directory for QC reports of sample $sample_name "
-			local project_analysis_dir=$DATA_VOL_IGF/analysis/$project_name/fastqc/$TODAY
 			local project_runs_dir=$DATA_VOL_IGF/runs/$project_name/fastqc/$TODAY
 			local project_results_dir=$DATA_VOL_IGF/results/$project_name/fastqc/$SEQRUN_DATE
 			local qc_report_outputdir=$project_results_dir/$sample_name
@@ -388,7 +386,7 @@ function submitfastqcJobs {
 		#create summary script from template
         	local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE
 		local project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-		local project_analysis_dir=$DATA_VOL_IGF/analysis/$project/fastqc/$TODAY
+		local project_analysis_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
 		local project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
 		
 		local ms_runs_dir=$project_runs_dir/multisample		
@@ -459,7 +457,7 @@ function submitfastqcJobs {
 			
 		#create output directory for the QC reports for each file
 		echo "`$NOW`creating output directory for QC reports of $sample_name "
-		local seqrun_analysis_dir=$DATA_VOL_IGF/analysis/seqrun/$SEQRUN_NAME/fastqc/$TODAY
+		local seqrun_analysis_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 		local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 		local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
 		local ms_runs_dir=$seqrun_runs_dir/multisample
@@ -527,7 +525,7 @@ function submitfastqcJobs {
 	
 	echo "`$NOW`creating and submitting job script for summary of results"
 	#create summary script from template
-	local seqrun_analysis_dir=$DATA_VOL_IGF/analysis/seqrun/$SEQRUN_NAME/fastqc/$TODAY
+	local seqrun_analysis_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 	local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 	local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
     	local seqrun_rawdata_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
@@ -834,11 +832,11 @@ while read row
 		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
 		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag"
 		cp $HTACCESS_TML $HTACCESS
-		cp $HTPASSWD_TML $HTPASSWD
+		cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
 		#configure .htaccess
 		sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
 		scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
-		scp $HTPASSWD $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
+		scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD
 		ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS"
 		ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD"
 		project_usr=`echo $row|cut -d ',' -f3`	
@@ -848,6 +846,9 @@ while read row
 		#for Test
 		#echo "PASSW: $project_passwd"
 		ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd"
+		# now remove local password protection file
+		rm $HTACCESS
+		rm ${HTPASSWD}.$project_tag
 	fi
 done <$CUSTOMERS_RUNS_FILE
 

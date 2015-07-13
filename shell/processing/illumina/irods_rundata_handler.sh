@@ -83,8 +83,8 @@ done
 
 #creates deployment results structure on eliot webserver
 #convert sample sheet & customers info file
-#dos2unix $SAMPLE_SHEET_PREFIX.csv
-#dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
+dos2unix $SAMPLE_SHEET_PREFIX.csv
+dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
 #get project information from Sample sheet (project_tag:username)
 echo -n "" > $CUSTOMERS_RUNS_FILE
 for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f9| sort | uniq | sed 1d`

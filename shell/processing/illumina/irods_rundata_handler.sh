@@ -35,7 +35,7 @@ PATH_BCL2CRAM_SCRIPT=/home/mmuelle1/git/data-management/shell/processing/illumin
 
 DEPLOYMENT_HOST=eliot.med.ic.ac.uk
 DEPLOYMENT_PATH=/www/html/report/project
-CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
+CUSTOMERS_FILEPATH=/home/igf/docs/igf/users
 CUSTOMERS_RUNS_FILE=customerInfo.csv
 
 #initialise log file

@@ -27,7 +27,7 @@ CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
 DEPLOYMENT_PATH=/www/html/report/project
 HTACCESS=.htaccess
 HTPASSWD=.htpasswd
-TEMPLATE_PATH=$BASEDIR/../../../template
+TEMPLATE_PATH=$BASEDIR/../../../templates
 HTACCESS_TML=$TEMPLATE_PATH/htaccess.tml
 HTPASSWD_TML=$TEMPLATE_PATH/htpasswd.tml
 
@@ -36,6 +36,7 @@ HTPASSWD_TML=$TEMPLATE_PATH/htpasswd.tml
 WALLTIME_HOURS_PER_JOB_BCL2FASTQ=72
 TMP_SPACE_GB_BCL2FASTQ=100
 THREADS_PER_RUN_BCL2FASTQ=2
+PATH_ADAPTER_DIR=$BASEDIR/../../../resources
 
 #TARBCL2FASTQ
 TARRESULTS_SCRIPT_DIR=$BASEDIR/tarresultsbcl2fastq.sh
@@ -97,6 +98,7 @@ function submitbcl2fastqJobs {
 	local path_sample_sheet=$2
 	local path_sample_sheet_reformatted=$3
 	local lane=$4
+	local adapter_type=$5
 
 	#BCL2FASTQ CONVERSION
 	#####################
@@ -130,6 +132,8 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#pathRawDataDir/${PATH_RAWDATA_DIR//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#deploymentPath/${bcl2fastq_summary_deployment//\//\\/}/" $bcl2fastq_script
+	sed -i -e "s/#pathAdapterDir/${PATH_ADAPTER_DIR//\//\\/}/" $bcl2fastq_script
+	sed -i -e "s/#adapterType/$adapter_type/" $bcl2fastq_script
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 
@@ -163,7 +167,7 @@ function submitTarResultsBcl2fastq {
                                 continue
                         fi
 
-                        #get current lane...
+                        #get current 	lane...
                         local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
                         #get project_tag
                         #local project_name=`echo $sampleSheetRow | cut -f10 -d ','| cut -f1 -d ':' |perl -pe 's/\s//g'`
@@ -386,7 +390,6 @@ function submitfastqcJobs {
 		#create summary script from template
         	local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE
 		local project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-		local project_analysis_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
 		local project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
 		
 		local ms_runs_dir=$project_runs_dir/multisample		
@@ -403,7 +406,6 @@ function submitfastqcJobs {
 
 		#configure summary script, it will be executed from fastqc script
 		sed -i -e "s/#pathReadsFastq/${path_fastq_dir//\//\\/}/" $summary_path
-		sed -i -e "s/#pathAnalysisDir/${project_analysis_dir//\//\\/}/" $summary_path
 		sed -i -e "s/#pathReportsDir/${project_results_dir//\//\\/}/" $summary_path
 		sed -i -e "s/#pathRunsDir/${project_runs_dir//\//\\/}/" $summary_path
 		sed -i -e "s/#pathMSReportsDir/${ms_results_dir//\//\\/}/" $summary_path
@@ -457,15 +459,11 @@ function submitfastqcJobs {
 			
 		#create output directory for the QC reports for each file
 		echo "`$NOW`creating output directory for QC reports of $sample_name "
-		local seqrun_analysis_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 		local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 		local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
 		local ms_runs_dir=$seqrun_runs_dir/multisample
 		local qc_report_outputdir=$seqrun_results_dir/$sample_name
 		
-		mkdir -m 770 -p $seqrun_analysis_dir
-		mkdir -m 770 -p $seqrun_analysis_dir/multisample
-
 		mkdir -m 770 -p $seqrun_results_dir
 		mkdir -m 770 -p $seqrun_results_dir/multisample
 		
@@ -525,7 +523,6 @@ function submitfastqcJobs {
 	
 	echo "`$NOW`creating and submitting job script for summary of results"
 	#create summary script from template
-	local seqrun_analysis_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 	local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
 	local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
     	local seqrun_rawdata_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
@@ -544,7 +541,6 @@ function submitfastqcJobs {
 	
 	#configure summary script, it will be executed from fastqc script
 	sed -i -e "s/#pathReadsFastq/${path_fastq_dir//\//\\/}/" $summary_path
-	sed -i -e "s/#pathAnalysisDir/${seqrun_analysis_dir//\//\\/}/" $summary_path
 	sed -i -e "s/#pathReportsDir/${seqrun_results_dir//\//\\/}/" $summary_path
 	sed -i -e "s/#pathRunsDir/${seqrun_runs_dir//\//\\/}/" $summary_path
 	sed -i -e "s/#pathMSReportsDir/${ms_results_dir//\//\\/}/" $summary_path
@@ -861,7 +857,6 @@ done <$CUSTOMERS_RUNS_FILE
 #SAMPLE_SHEET_PREFIX=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if($prefix =~ /-/){ $prefix=SampleSheet;  }else{ $prefix=~s/^[AB]//; } print $prefix'`
 
 PATH_RUN_DIR_BCL2FASTQ=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
-PATH_ANALYSIS_DIR_BCL2FASTQ=$DATA_VOL_IGF/analysis/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
 PATH_RESULTS_DIR_BCL2FASTQ=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY				
 PATH_RAWDATA_DIR=$DATA_VOL_IGF/rawdata
 
@@ -898,9 +893,19 @@ $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTE
 #for LANE in $LANES
 for LANE in {1..8}
 do
-
-	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED $LANE
-	
+	while read line
+        do
+		#skip samples not in current lane...
+		sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+		if [ $sample_lane == $LANE ]
+		then
+			adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
+			#for TEST
+			echo "ADAPTER TYPE $adapter_type"
+			break
+		fi
+	done <$PATH_SAMPLE_SHEET_REFORMATTED
+	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED $LANE $adapter_type
 done
 
 # SUBMIT JOB TO TAR RESALTS OF BCL2FASTQ RUNS

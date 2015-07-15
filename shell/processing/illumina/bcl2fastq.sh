@@ -34,8 +34,10 @@ PATH_RUN_DIR=#pathRunDir
 PATH_ANALYSIS_DIR=#pathAnalysisDir
 PATH_RESULTS_DIR=#pathResultsDir
 PATH_RAWDATA_DIR=#pathRawDataDir
-RUN_NAME=#runName
+PATH_ADAPTER_DIR=#pathAdapterDir
 PATH_SAMPLE_SHEET=#pathSampleSheet
+RUN_NAME=#runName
+ADAPTER_TYPE=#adapterType
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_PATH=#deploymentPath
 
@@ -138,7 +140,30 @@ cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_* $TMPDIR/$R
 echo "`$NOW`creating make file for Bcl->fastq conversion..."
 #/groupvol/cgi/software/bcl2fastq/1.8.4/configureBclToFastq.pl --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
 
-$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r1.fa --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r2.fa --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
+############################################## XXXXXX ######################################
+# Now based on Adapter Type call bcl2fastq converter passing the adapter in acconrding
+
+case "$ADAPTER_TYPE" in
+	"truseq" )
+	adapter_r1=TruSeq_r1.fa
+	adapter_r2=TruSeq_r2.fa
+	;;
+	"smallrna" )
+	adapter_r1=SmallRNA_r1.fa
+	adapter_r2=SmallRNA_r2.fa
+	;;
+	"nextera" )
+	adapter_r1=Nextera_r1.fa
+	adapter_r2=Nextera_r2.fa
+	;;
+esac
+
+#for TEST
+echo "`$NOW` $adapter_r1 $adapter_r2"
+	
+$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r1 --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r2 --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
+
+#$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r1.fa --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r2.fa --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
 #$CASAVA_HOME/bin/configureBclToFastq.pl --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
 
 echo ""

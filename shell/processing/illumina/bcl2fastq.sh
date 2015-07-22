@@ -36,6 +36,7 @@ PATH_RESULTS_DIR=#pathResultsDir
 PATH_RAWDATA_DIR=#pathRawDataDir
 PATH_ADAPTER_DIR=#pathAdapterDir
 PATH_SAMPLE_SHEET=#pathSampleSheet
+PATH_TEMPLATE_HTM=#pathTemplateHtm
 RUN_NAME=#runName
 ADAPTER_TYPE=#adapterType
 DEPLOYMENT_SERVER=#deploymentServer
@@ -295,6 +296,8 @@ mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
 cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Undetermined_indices $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
 chmod -R 770 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME
 
+## adding html for lanes statistics
+scp $PATH_TEMPLATE_HTM/lanes.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/  > /dev/null 2>&1
 
 #copying configuration files and stats
 echo "`$NOW`copying configuration files and stats to $PATH_RUN_DIR/lane${LANE}..."

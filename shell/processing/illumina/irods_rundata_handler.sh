@@ -75,7 +75,7 @@ do
 	
 		echo "`$NOW` ERROR: Required file or directory $FILE missing... aborting"
 		#send email alert...
-		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file or directory\nRequired file or directory $FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file or directory\nRequired file or directory $FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 		exit 1
 			
 	fi
@@ -87,7 +87,7 @@ dos2unix $SAMPLE_SHEET_PREFIX.csv
 dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
 #get project information from Sample sheet (project_tag:username)
 echo -n "" > $CUSTOMERS_RUNS_FILE
-for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f9| sort | uniq | sed 1d`
+for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f8| sort | uniq | sed 1d`
 do
 	#for TEST
 	#echo "$project_info PROJECT INFO FILE"
@@ -99,7 +99,7 @@ do
 	if [[ -z $customers_info ]]; then
 		echo "`$NOW` ERROR: customer for project $project_tag is unknown"
 		#send email alert...
-		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 		exit 1
 	fi
 	echo $customers_info >> $CUSTOMERS_RUNS_FILE
@@ -108,7 +108,7 @@ if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 	then
 		echo "`$NOW` ERROR: Required file $CUSTOMERS_RUNS_FILE  missing... aborting"
 		#send email alert...
-		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 		exit 1
 	fi
 
@@ -167,7 +167,7 @@ if [[ $MD5_STATUS == 'FAILED' ]]
 then
 
 	#send email alert...
-	echo -e "subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+	echo -e "subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 	
 	#...and exit
 	exit 1

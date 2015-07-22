@@ -134,6 +134,7 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#deploymentPath/${bcl2fastq_summary_deployment//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#pathAdapterDir/${PATH_ADAPTER_DIR//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#adapterType/$adapter_type/" $bcl2fastq_script
+	sed -i -e "s/#pathTemplateHtm/${TEMPLATE_PATH//\//\\/}/" $bcl2fastq_script
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 
@@ -821,8 +822,9 @@ while read row
         #better to do on cx1 on the cluster
         #checks if the project directory already exists in the web server
 	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]";then
-		#none to be done
+		#remove the old fastq link
                	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
+		ssh $DEPLOYMENT_SERVER "rm $DEPLOYMENT_PATH/$project_tag/fastq"
 	else
 		#creates password proctected project_tag dir
 		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";

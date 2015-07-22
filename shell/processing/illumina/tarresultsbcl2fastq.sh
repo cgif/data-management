@@ -3,14 +3,14 @@
 # script to run tarBcl2FastqResults 
 #
 
-# PBS -l walltime=#walltimeHours:00:00
-# PBS -l select=1:ncpus=#threads:mem=1024mb:tmpspace=#tmpSpacegb
+#PBS -l walltime=72:00:00
+#PBS -l select=1:ncpus=1:mem=1024mb
 
 #PBS -m ea
 #PBS -M cgi@imperial.ac.uk
 #PBS -j oe
 
-# PBS -q #queue
+#PBS -q pqcgi
 
 
 #now
@@ -51,7 +51,7 @@ echo  $MD5_STATUS
 if [[ $MD5_STATUS == 'FAILED' ]]
 then
         #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_NAME TAR Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+        echo -e "subject:Sequencing Run $SEQ_RUN_NAME TAR Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 
         #...and exit
         exit 1
@@ -76,7 +76,7 @@ echo  $MD5_STATUS
 if [[ $MD5_STATUS == 'FAILED' ]]
 then
         #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+        echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 
         #...and exit
         exit 1
@@ -97,8 +97,7 @@ customer_email=`echo $customers_info|cut -d ',' -f5`
 #echo "value customer #$customer_email#"
 if [[ $customer_email != *"@"* ]]; then
 	#send email alert...
-	#echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
-	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "mmuelle1@ic.ac.uk"
+	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 fi
 customer_mail=customer_mail.$PROJECT_TAG
 cp $MAIL_TEMPLATE_PATH/customer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail

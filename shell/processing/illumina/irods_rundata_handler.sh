@@ -32,6 +32,7 @@ LOG=/home/igf/log/seqrun_processing/$RUN_NAME.log
 HOST=login.cx1.hpc.ic.ac.uk
 DATA_VOL_IGF=/project/tgu
 PATH_BCL2CRAM_SCRIPT=/home/mmuelle1/git/data-management/shell/processing/illumina/qbcl2cram
+#PATH_BCL2CRAM_SCRIPT=/home/mcosso/git/data-management/shell/processing/illumina/qbcl2cram
 
 DEPLOYMENT_HOST=eliot.med.ic.ac.uk
 DEPLOYMENT_PATH=/www/html/report/project
@@ -87,7 +88,10 @@ dos2unix $SAMPLE_SHEET_PREFIX.csv
 dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
 #get project information from Sample sheet (project_tag:username)
 echo -n "" > $CUSTOMERS_RUNS_FILE
-for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f8| sort | uniq | sed 1d`
+#get the position in the sample_sheet of sample_project column
+project_position=`cat $SAMPLE_SHEET_PREFIX.csv| grep Sample_Project | awk -F, '{for(i=1;i<=NF;i++){if($i=="Sample_Project")print i;}}'`
+
+for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f$project_position| sort | uniq | sed 1d`
 do
 	#for TEST
 	#echo "$project_info PROJECT INFO FILE"

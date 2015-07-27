@@ -127,7 +127,6 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#bcl2FastqVersion/$BCL2FASTQ_VERSION/" $bcl2fastq_script
 	sed -i -e "s/#pathRunDir/${PATH_RUN_DIR_BCL2FASTQ//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#pathAnalysisDir/${PATH_ANALYSIS_DIR_BCL2FASTQ//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#pathResultsDir/${PATH_RESULTS_DIR_BCL2FASTQ//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#pathRawDataDir/${PATH_RAWDATA_DIR//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $bcl2fastq_script
@@ -864,7 +863,6 @@ PATH_RAWDATA_DIR=$DATA_VOL_IGF/rawdata
 
 mkdir -m 770 -p $PATH_RUN_DIR_BCL2FASTQ
 chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
-mkdir -p $PATH_ANALYSIS_DIR_BCL2FASTQ
 
 
 #we need a bcl2fastq job-list file for split_Fastq_dependencies, but MOST IMPORTANTLY, knowing the lane that belonged to a certain bcl2fastq job enables

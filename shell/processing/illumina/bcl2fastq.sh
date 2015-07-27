@@ -31,7 +31,7 @@ THREADS=#threads
 
 PATH_SEQRUN_DIR=#pathSeqRunDir
 PATH_RUN_DIR=#pathRunDir
-PATH_ANALYSIS_DIR=#pathAnalysisDir
+#PATH_ANALYSIS_DIR=#pathAnalysisDir
 PATH_RESULTS_DIR=#pathResultsDir
 PATH_RAWDATA_DIR=#pathRawDataDir
 PATH_ADAPTER_DIR=#pathAdapterDir
@@ -191,7 +191,23 @@ echo ""
 
 #copy fastq files to raw data folder
 
+
+####  XXXXXXXXXXX 
+#undetermined indices fastqs
+############################
+echo "`$NOW`copying undetermined indices fastq files to $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME..."
+
+#create output directory
+mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
+
+#copy files
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Undetermined_indices $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
+chmod -R 770 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME
+
 echo "`$NOW`copying sample fastq files, md5 checksums and sample sheets to $PATH_RAWDATA_DIR..."
+
+#sample fastqs
+##############
 
 #iterate over project folders
 for PROJECT_DIR in `ls --color=never $TMPDIR/$RUN_NAME/Unaligned | grep Project_`
@@ -243,9 +259,29 @@ do
 			#...make fastq output file name
 			FASTQ_FILE=`basename $FASTQ_FILE`
 			FASTQ_NAME=`echo $FASTQ_FILE | perl -pe "s/^${SAMPLE_NAME}_/${RUN_NAME}_/"`
+			# for TEST
+			#echo "SAMPLE_NAME  $SAMPLE_NAME"
+			#echo "FASTQ_FILE  $FASTQ_FILE"
+			#echo "FASTQ_NAME  $FASTQ_NAME"
 			
-			#rename fastq file
-			mv $FASTQ_FILE $FASTQ_NAME
+			### checks if name contains NNNN for undeterminated_indices 
+			### then create symbolic link to corrisponding file in rawdata/seqrun 
+			### directory
+			if [[ $FASTQ_FILE == *"_NNNN"* ]]; then
+				#get lane and read to identify the fastq file to link
+				read_number=`echo $FASTQ_FILE | cut -d'.' -f1|  tr '_' '\n' | tail -2| head -n 1 | sed 's/R//'`
+				lane=`echo $FASTQ_FILE | cut -d'.' -f1|  tr '_' '\n' | tail -3| head -n 1 | sed 's/L//'`
+				path2link=$PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane$((10#$lane))
+				fastq_orign=`ls  $path2link | grep R${read_number}`
+				ln -s $path2link/$fastq_orign $FASTQ_NAME
+				# for TEST
+				#echo "RAW_READ $read_number" 
+				#echo "RAW_LANE $lane" 
+				#echo "fastq_orign $fastq_orign"
+			else
+				#rename fastq file
+				mv $FASTQ_FILE $FASTQ_NAME
+			fi
 			
 			echo -n "`$NOW`checking fastq integrity..."
 			gzip -t $FASTQ_NAME
@@ -255,11 +291,11 @@ do
 			md5sum $FASTQ_NAME > $FASTQ_NAME.md5
 			
 			#copy files
-			
 			echo "`$NOW`copying files..."
 			#fastq
 			echo "`$NOW`$FASTQ_NAME -> $DESTINATION_DIR"
-			cp -v $FASTQ_NAME $DESTINATION_DIR/ 				
+			# added -a option to preserv symbolic links
+			cp -av $FASTQ_NAME $DESTINATION_DIR/ 				
 			chmod 660 $DESTINATION_DIR/$FASTQ_NAME
 
 			#md5
@@ -287,14 +323,7 @@ echo ""
 echo "================================================================================================"
 echo ""
 
-echo "`$NOW`copying undetermined indices fastq files to $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME..."
 
-#create output directory
-mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
-
-#copy files
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Undetermined_indices $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
-chmod -R 770 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME
 
 ## adding html for lanes statistics
 scp $PATH_TEMPLATE_HTM/lanes.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/  > /dev/null 2>&1
@@ -353,4 +382,3 @@ ls -al $TMPDIR/$RUN_NAME/Unaligned/*/*
 echo ""
 
 du -sh $TMPDIR
-

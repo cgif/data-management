@@ -33,7 +33,7 @@ DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
 DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
-ssh login.cx1.hpc.ic.ac.uk "tar cfz $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  $PATH_PROJECT_TAG_DIR/$SEQ_RUN_DATE"	
+ssh login.cx1.hpc.ic.ac.uk "tar hcfz $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  $PATH_PROJECT_TAG_DIR/$SEQ_RUN_DATE"	
 
 echo "`$NOW` tar of $SEQ_RUN_DATE completed"
 

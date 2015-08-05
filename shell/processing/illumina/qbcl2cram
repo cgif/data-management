@@ -212,12 +212,15 @@ function submitTarResultsBcl2fastq {
                                 done <$bcl2fastq_job_id_list
 				# for TEST
                                 #echo $tarresults_job_dependency
+				sed '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $TEMPLATE_PATH/lanes.htm > $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
                         done
                         #########################################
                         ### create e configure tarJobScript ####
 			local project_tag=`basename $project_file .prj`
                         local tarresults_script=$PATH_RUN_DIR_BCL2FASTQ/tarresultsbcl2fastq.${project_tag}.sh
 			local deployment_symbolic_link=/www/html/report/project/$project_tag
+			local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
+
                         cp $TARRESULTS_SCRIPT_DIR $tarresults_script
                         chmod 770 $tarresults_script
                         path_project_tag_dir=$DATA_VOL_IGF/rawdata/$project_tag/fastq
@@ -232,6 +235,7 @@ function submitTarResultsBcl2fastq {
 			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentTarPath/${DEPLOYMENT_TAR_BASE_DIR//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentSymbolicLink/${deployment_symbolic_link//\//\\/}/" $tarresults_script
+			sed -i -e "s/#deploymentSummaryPath/${bcl2fastq_summary_deployment//\//\\/}/" $tarresults_script
 
 			#submit job 
 			local log_output_path=`echo $tarresults_script | perl -pe 's/\.sh/\.log/g'`
@@ -821,32 +825,33 @@ while read row
         #better to do on cx1 on the cluster
         #checks if the project directory already exists in the web server
 	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]";then
-		#remove the old fastq link
                	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
-		ssh $DEPLOYMENT_SERVER "rm $DEPLOYMENT_PATH/$project_tag/fastq"
+		#if fastq directory already exists must add the new files there
+		#ssh $DEPLOYMENT_SERVER "rm $DEPLOYMENT_PATH/$project_tag/fastq"
 	else
 		#creates password proctected project_tag dir
 		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
 		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag"
-		cp $HTACCESS_TML $HTACCESS
-		cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
-		#configure .htaccess
-		sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
-		scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
-		scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD
-		ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS"
-		ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD"
-		project_usr=`echo $row|cut -d ',' -f3`	
-		#for Test
-		#echo "USER: $project_usr"
-		project_passwd=`echo $row|cut -d ',' -f4`	
-		#for Test
-		#echo "PASSW: $project_passwd"
-		ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd"
-		# now remove local password protection file
-		rm $HTACCESS
-		rm ${HTPASSWD}.$project_tag
 	fi
+	#added in any case I write the secure files
+	cp $HTACCESS_TML $HTACCESS
+	cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
+	#configure .htaccess
+	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
+	scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
+	scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD
+	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS"
+	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD"
+	project_usr=`echo $row|cut -d ',' -f3`	
+	#for Test
+	#echo "USER: $project_usr"
+	project_passwd=`echo $row|cut -d ',' -f4`	
+	#for Test
+	#echo "PASSW: $project_passwd"
+	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd"
+	# now remove local password protection file
+	rm $HTACCESS
+	rm ${HTPASSWD}.$project_tag
 done <$CUSTOMERS_RUNS_FILE
 
 #extract sample sheet name from run name:
@@ -890,8 +895,9 @@ PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
 
-#for LANE in $LANES
-for LANE in {1..8}
+for LANE in $LANES
+#for LANE in `sed 1d $PATH_SAMPLE_SHEET_REFORMATTED | cut -d ',' -f2 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
+#for LANE in {1..8}
 do
 	while read line
         do

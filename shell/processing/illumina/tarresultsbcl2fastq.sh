@@ -31,9 +31,16 @@ PATH_TO_DESTINATION=#pathToDestination
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
 DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
+DEPLOYMENT_SUMMARY_PATH=#deploymentSummaryPath
+
+
+## adding html for lanes statistics
+scp $RUN_DIR_BCL2FASTQ/index.$PROJECT_TAG  $DEPLOYMENT_SERVER:$DEPLOYMENT_SUMMARY_PATH/index.html  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod -R 664 $DEPLOYMENT_SUMMARY_PATH/index.html" > /dev/null 2>&1
+
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
-ssh login.cx1.hpc.ic.ac.uk "tar hcfz $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  $PATH_PROJECT_TAG_DIR/$SEQ_RUN_DATE"	
+ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; tar hcfz $SEQ_RUN_DATE.tar.gz  $SEQ_RUN_DATE"	
 
 echo "`$NOW` tar of $SEQ_RUN_DATE completed"
 
@@ -57,19 +64,29 @@ then
         exit 1
 fi
 
-# creates rnd name for result directory
-rnddir_results=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-15} | head -n 1` 
-PATH_TO_RNDDIR=$DEPLOYMENT_TAR_BASE_DIR/$rnddir_results
-ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $PATH_TO_RNDDIR" 
-
-echo "`$NOW` coping TAR archive on eliot server ..."
-scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$PATH_TO_RNDDIR 
-#create project_tag dir & symbolic link
 ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $DEPLOYMENT_SYMBOLIC_LINK"
-ssh $DEPLOYMENT_SERVER "ln -s  $PATH_TO_RNDDIR $DEPLOYMENT_SYMBOLIC_LINK/fastq"
+path_2_fastq=$DEPLOYMENT_SYMBOLIC_LINK/fastq
+#checks if in project_tag  already exists fastq directory
+# if yes: Add new files in that directory
+# if no: generate rnd direcory name and create fastq symbolic link to it
+if ssh $DEPLOYMENT_SERVER "[ -d /$path_2_fastq ]";then
+	echo "`$NOW` coping TAR archive on eliot server ..."
+	scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$path_2_fastq
+else
+	# creates rnd name for result directory
+	rnddir_results=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-15} | head -n 1` 
+	PATH_TO_RNDDIR=$DEPLOYMENT_TAR_BASE_DIR/$rnddir_results
+	ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $PATH_TO_RNDDIR" 
+	
+	echo "`$NOW` coping TAR archive on eliot server ..."
+	scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$PATH_TO_RNDDIR 
+	#create project_tag dir & symbolic link
+	ssh $DEPLOYMENT_SERVER "ln -s  $PATH_TO_RNDDIR $path_2_fastq"
+fi
+
 
 #change to location where the tar and the md5 file are & check
-MD5_STATUS=`ssh $DEPLOYMENT_SERVER "cd $PATH_TO_RNDDIR; md5sum -c $SEQ_RUN_DATE.tar.gz.md5 2>&1 | head -n 1 | cut -f 2 -d ' '"`
+MD5_STATUS=`ssh $DEPLOYMENT_SERVER "cd $path_2_fastq; md5sum -c $SEQ_RUN_DATE.tar.gz.md5 2>&1 | head -n 1 | cut -f 2 -d ' '"`
 echo  $MD5_STATUS
 
 #abort if md5 check fails

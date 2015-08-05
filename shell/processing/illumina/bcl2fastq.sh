@@ -326,7 +326,7 @@ echo ""
 
 
 ## adding html for lanes statistics
-scp $PATH_TEMPLATE_HTM/lanes.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/  > /dev/null 2>&1
+#scp $PATH_TEMPLATE_HTM/index.html $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/ > /dev/null 2>&1
 
 #copying configuration files and stats
 echo "`$NOW`copying configuration files and stats to $PATH_RUN_DIR/lane${LANE}..."

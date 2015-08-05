@@ -31,8 +31,8 @@ LOG=/home/igf/log/seqrun_processing/$RUN_NAME.log
 
 HOST=login.cx1.hpc.ic.ac.uk
 DATA_VOL_IGF=/project/tgu
-PATH_BCL2CRAM_SCRIPT=/home/mmuelle1/git/data-management/shell/processing/illumina/qbcl2cram
-#PATH_BCL2CRAM_SCRIPT=/home/mcosso/git/data-management/shell/processing/illumina/qbcl2cram
+#PATH_BCL2CRAM_SCRIPT=/home/mmuelle1/git/data-management/shell/processing/illumina/qbcl2cram
+PATH_BCL2CRAM_SCRIPT=/home/mcosso/git/data-management/shell/processing/illumina/qbcl2cram
 
 DEPLOYMENT_HOST=eliot.med.ic.ac.uk
 DEPLOYMENT_PATH=/www/html/report/project

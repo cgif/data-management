@@ -184,6 +184,9 @@ function submitTarResultsBcl2fastq {
 
                 for project_file in `ls --color=never $PATH_RUN_DIR_BCL2FASTQ | grep .prj`
                 do
+			
+			#create the appropriate index forlane statistics
+			cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
                         #for each lane in project_tag
                         local tarresults_job_dependency="afterok"
 
@@ -212,7 +215,8 @@ function submitTarResultsBcl2fastq {
                                 done <$bcl2fastq_job_id_list
 				# for TEST
                                 #echo $tarresults_job_dependency
-				sed '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $TEMPLATE_PATH/lanes.htm > $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
+				sed '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag} > $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}.tmp
+				mv $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}.tmp $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
                         done
                         #########################################
                         ### create e configure tarJobScript ####
@@ -824,14 +828,14 @@ while read row
         project_tag=`echo $row|cut -d ',' -f1`
         #better to do on cx1 on the cluster
         #checks if the project directory already exists in the web server
-	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]";then
+	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]" < /dev/null ;then
                	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
 		#if fastq directory already exists must add the new files there
 		#ssh $DEPLOYMENT_SERVER "rm $DEPLOYMENT_PATH/$project_tag/fastq"
 	else
 		#creates password proctected project_tag dir
 		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
-		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag"
+		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag" < /dev/null
 	fi
 	#added in any case I write the secure files
 	cp $HTACCESS_TML $HTACCESS
@@ -839,16 +843,16 @@ while read row
 	#configure .htaccess
 	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
 	scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
-	scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD
-	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS"
-	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD"
+	scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS" < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD" < /dev/null
 	project_usr=`echo $row|cut -d ',' -f3`	
 	#for Test
 	#echo "USER: $project_usr"
 	project_passwd=`echo $row|cut -d ',' -f4`	
 	#for Test
 	#echo "PASSW: $project_passwd"
-	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd"
+	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd" < /dev/null
 	# now remove local password protection file
 	rm $HTACCESS
 	rm ${HTPASSWD}.$project_tag

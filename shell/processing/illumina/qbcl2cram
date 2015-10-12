@@ -181,12 +181,11 @@ function submitTarResultsBcl2fastq {
                 done < $path_sample_sheet_reformatted
 		 
 		
+		#create the appropriate index forlane statistics
+		cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 
                 for project_file in `ls --color=never $PATH_RUN_DIR_BCL2FASTQ | grep .prj`
                 do
-			
-			#create the appropriate index forlane statistics
-			cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
                         #for each lane in project_tag
                         local tarresults_job_dependency="afterok"
 
@@ -215,9 +214,10 @@ function submitTarResultsBcl2fastq {
                                 done <$bcl2fastq_job_id_list
 				# for TEST
                                 #echo $tarresults_job_dependency
-				sed '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag} > $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}.tmp
-				mv $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}.tmp $PATH_RUN_DIR_BCL2FASTQ/index.${project_tag}
+				sed '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html > $PATH_RUN_DIR_BCL2FASTQ/index.tmp
+				mv $PATH_RUN_DIR_BCL2FASTQ/index.tmp $PATH_RUN_DIR_BCL2FASTQ/index.html
                         done
+
                         #########################################
                         ### create e configure tarJobScript ####
 			local project_tag=`basename $project_file .prj`
@@ -239,7 +239,7 @@ function submitTarResultsBcl2fastq {
 			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentTarPath/${DEPLOYMENT_TAR_BASE_DIR//\//\\/}/" $tarresults_script
 			sed -i -e "s/#deploymentSymbolicLink/${deployment_symbolic_link//\//\\/}/" $tarresults_script
-			sed -i -e "s/#deploymentSummaryPath/${bcl2fastq_summary_deployment//\//\\/}/" $tarresults_script
+			#sed -i -e "s/#deploymentSummaryPath/${bcl2fastq_summary_deployment//\//\\/}/" $tarresults_script
 
 			#submit job 
 			local log_output_path=`echo $tarresults_script | perl -pe 's/\.sh/\.log/g'`
@@ -254,6 +254,12 @@ function submitTarResultsBcl2fastq {
 			echo "`$NOW`Job ID:$job_id"
 			chmod 660 $log_output_path
 		done
+		## adding html for lanes statistics
+		echo " adding html for lanes statistics"
+		chmod 775 ${PATH_RUN_DIR_BCL2FASTQ}/index.html
+		local bclfastq_deployment_path=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
+		scp $PATH_RUN_DIR_BCL2FASTQ/index.html  $DEPLOYMENT_SERVER:$bclfastq_deployment_path/index.html < /dev/null
+		ssh $DEPLOYMENT_SERVER "chmod -R 664 $bclfastq_deployment_path/index.html" < /dev/null 
 }
 
 
@@ -291,11 +297,11 @@ function submitfastqcJobs {
 		
 		#create summary directory on deployment server
 		local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
-		ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  > /dev/null 2>&1
-		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-		ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" > /dev/null 2>&1
+		ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null 
+		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+		ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
 	done
 
@@ -523,11 +529,11 @@ function submitfastqcJobs {
 		
 	#create summary directory on deployment server
 	local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
-	ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  > /dev/null 2>&1
-	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ > /dev/null 2>&1
-	ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" > /dev/null 2>&1
+	ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
+	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null 
+	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null 
 	
 	echo "`$NOW`creating and submitting job script for summary of results"
 	#create summary script from template
@@ -597,11 +603,11 @@ function submitBWAMEMJobs {
 
 		#create summary directory on deployment server
 		local bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/bwa/$TODAY
-		ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bwa_summary_deployment" > /dev/null 2>&1
-		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ > /dev/null 2>&1
-		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ > /dev/null 2>&1
-		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ > /dev/null 2>&1
-		ssh $DEPLOYMENT_SERVER "chmod -R 664 $bwa_summary_deployment/*png" > /dev/null 2>&1
+		ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bwa_summary_deployment" < /dev/null 
+		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
+		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null 
+		scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
+		ssh $DEPLOYMENT_SERVER "chmod -R 664 $bwa_summary_deployment/*png" < /dev/null
 
 	done
 
@@ -838,20 +844,21 @@ while read row
 		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag" < /dev/null
 	fi
 	#added in any case I write the secure files
-	cp $HTACCESS_TML $HTACCESS
-	cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
-	#configure .htaccess
-	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
-	scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
-	scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD < /dev/null
-	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS" < /dev/null
-	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD" < /dev/null
 	project_usr=`echo $row|cut -d ',' -f3`	
 	#for Test
 	#echo "USER: $project_usr"
 	project_passwd=`echo $row|cut -d ',' -f4`	
 	#for Test
 	#echo "PASSW: $project_passwd"
+	cp $HTACCESS_TML $HTACCESS
+	cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
+	#configure .htaccess
+	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
+	sed -i -e "s/#customerUsername/$project_usr/" $HTACCESS
+	scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag < /dev/null
+	scp $HTPASSWD.${project_tag} $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag/$HTPASSWD < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS" < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD" < /dev/null
 	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd" < /dev/null
 	# now remove local password protection file
 	rm $HTACCESS

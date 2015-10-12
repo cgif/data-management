@@ -239,7 +239,8 @@ do
 		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_NAME
 			
 		#make distination folders based on run date and sample name
-		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/$SAMPLE_NAME
+		# XXXXX era 770
+		mkdir -m 750 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/$SAMPLE_NAME
 		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE
 		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq
 

@@ -31,12 +31,12 @@ PATH_TO_DESTINATION=#pathToDestination
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
 DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
-DEPLOYMENT_SUMMARY_PATH=#deploymentSummaryPath
+#DEPLOYMENT_SUMMARY_PATH=#deploymentSummaryPath
 
 
 ## adding html for lanes statistics
-scp $RUN_DIR_BCL2FASTQ/index.$PROJECT_TAG  $DEPLOYMENT_SERVER:$DEPLOYMENT_SUMMARY_PATH/index.html  > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod -R 664 $DEPLOYMENT_SUMMARY_PATH/index.html" > /dev/null 2>&1
+#scp $RUN_DIR_BCL2FASTQ/index.$PROJECT_TAG  $DEPLOYMENT_SERVER:$DEPLOYMENT_SUMMARY_PATH/index.html  > /dev/null 2>&1
+#ssh $DEPLOYMENT_SERVER "chmod -R 664 $DEPLOYMENT_SUMMARY_PATH/index.html" > /dev/null 2>&1
 
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."

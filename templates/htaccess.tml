@@ -1,7 +1,7 @@
 ## funt this file into the rnd dir
 AuthName "IGF Restricted"
 AuthType Basic
-AuthBasicProvider file ldap
+AuthBasicProvider ldap file
 AuthzLDAPAuthoritative on
 AuthLDAPUrl ldap://unixldap.cc.ic.ac.uk/ou=everyone,dc=ic,dc=ac,dc=uk?uid
 AuthUserFile /www/html/report/project/#project_tag/.htpasswd

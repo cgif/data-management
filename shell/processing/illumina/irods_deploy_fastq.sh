@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# script to run tarBcl2FastqResults 
+# script to run irods_deploy_fastq 
 #
 
 #PBS -l walltime=72:00:00
@@ -28,16 +28,17 @@ CUSTOMER_FILE_PATH=#customerFilePath
 PROJECT_TAG=#projectTag
 MAIL_TEMPLATE_PATH=#mailTemplatePath
 PATH_TO_DESTINATION=#pathToDestination
-DEPLOYMENT_SERVER=#deploymentServer
-DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
-DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
-#DEPLOYMENT_SUMMARY_PATH=#deploymentSummaryPath
+#DEPLOYMENT_SERVER=#deploymentServer
+#DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
+#DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
+HIGHTLIGHT="iRODSUserTagging:Star"
 
+IRODS_USER=igf
+IRODS_PWD=igf
 
-## adding html for lanes statistics
-#scp $RUN_DIR_BCL2FASTQ/index.$PROJECT_TAG  $DEPLOYMENT_SERVER:$DEPLOYMENT_SUMMARY_PATH/index.html  > /dev/null 2>&1
-#ssh $DEPLOYMENT_SERVER "chmod -R 664 $DEPLOYMENT_SUMMARY_PATH/index.html" > /dev/null 2>&1
-
+#ADDING FISTAQ FILES TO ELIOT(eliotResc)
+module load irods/4.2.0
+iinit igf
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; tar hcfz $SEQ_RUN_DATE.tar.gz  $SEQ_RUN_DATE"	
@@ -64,54 +65,54 @@ then
         exit 1
 fi
 
-ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $DEPLOYMENT_SYMBOLIC_LINK"
-path_2_fastq=$DEPLOYMENT_SYMBOLIC_LINK/fastq
-#checks if in project_tag  already exists fastq directory
-# if yes: Add new files in that directory
-# if no: generate rnd direcory name and create fastq symbolic link to it
-if ssh $DEPLOYMENT_SERVER "[ -d /$path_2_fastq ]";then
-	echo "`$NOW` coping TAR archive on eliot server ..."
-	scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$path_2_fastq
-else
-	# creates rnd name for result directory
-	rnddir_results=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-15} | head -n 1` 
-	PATH_TO_RNDDIR=$DEPLOYMENT_TAR_BASE_DIR/$rnddir_results
-	ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $PATH_TO_RNDDIR" 
-	
-	echo "`$NOW` coping TAR archive on eliot server ..."
-	scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$PATH_TO_RNDDIR 
-	#create project_tag dir & symbolic link
-	ssh $DEPLOYMENT_SERVER "ln -s  $PATH_TO_RNDDIR $path_2_fastq"
-fi
-
-
-#change to location where the tar and the md5 file are & check
-MD5_STATUS=`ssh $DEPLOYMENT_SERVER "cd $path_2_fastq; md5sum -c $SEQ_RUN_DATE.tar.gz.md5 2>&1 | head -n 1 | cut -f 2 -d ' '"`
-echo  $MD5_STATUS
-
-#abort if md5 check fails
-if [[ $MD5_STATUS == 'FAILED' ]]
-then
-        #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $SEQ_RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
-
-        #...and exit
-        exit 1
-fi
-
-#now remove the tar file
-echo "`$NOW` remove tar from eliot server ..."
-ssh login.cx1.hpc.ic.ac.uk "rm $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz*" 
-echo "`$NOW` Files have been deployed, Well done!"
-
 #now send mail to the customer
 customers_info=`grep -w $PROJECT_TAG $CUSTOMER_FILE_PATH/customerInfo.csv`
 customer_name=`echo $customers_info|cut -d ',' -f2`
 customer_username=`echo $customers_info|cut -d ',' -f3`
 customer_passwd=`echo $customers_info|cut -d ',' -f4`
 customer_email=`echo $customers_info|cut -d ',' -f5`
-#for TEST
-#echo "value customer #$customer_email#"
+
+echo "UTENTE $customer_username"
+
+echo "$NOW checking if user already exists ..."
+irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
+echo "$NOW irods_user $irods_user"
+# if the user has not yet been created, then we create him
+if [ "$irods_user" = "" ]
+then
+	echo "$NOW creating user ..."
+	# make user
+	iadmin mkuser $customer_username#igfZone rodsuser
+	# set a password
+	iadmin moduser $customer_username#igfZone password $customer_passwd
+
+fi
+#ichmod -rM own igf /igfZone/home/$customer_username
+#ichmod -rM inherit /igf/Zone/home/$customer_username
+
+# creates the deploy structure
+imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+
+#ichmod -rM own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+#ichmod -rM inherit /igf/Zone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+echo "$NOW attaching meta-data run_name to run_date collection ..."
+imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
+
+echo "$NOW storing file in irods .... checksum"
+iput -K -fP -R eliotResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+
+#set expire date
+isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
+imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz fastq $customer_username $HIGHTLIGHT
+imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
+
+ichmod -rM read $customer_username /igfZone/home/$customer_username/
+
+#now remove the tar file
+echo "`$NOW` remove tar from eliot server ..."
+ssh login.cx1.hpc.ic.ac.uk "rm $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz*" 
+echo "`$NOW` Files have been deployed, Well done!"
+
 if [[ $customer_email != *"@"* ]]; then
 	#send email alert...
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
@@ -124,7 +125,7 @@ sed -i -e "s/#customerName/$customer_name/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#customerUsername/$customer_username/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
 sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 #now remove 
 rm $RUN_DIR_BCL2FASTQ/$customer_mail

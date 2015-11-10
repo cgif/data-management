@@ -44,6 +44,13 @@ IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		#NR>1 is used to skip th
 #echo "`$NOW` getting runs already registered in iRODS..."
 
 REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
+## checks if there was an error on irods
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR reading registered runs in IRODS"
+    exit 1
+fi
+
 
 #getting unregistered runs
 UNREGISTERED_RUNS=${RUNS[@]}		

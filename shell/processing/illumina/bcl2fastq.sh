@@ -41,6 +41,7 @@ RUN_NAME=#runName
 ADAPTER_TYPE=#adapterType
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_PATH=#deploymentPath
+MIXED_INDEXES=#mixedIndexes
 
 RUN_DATE=`echo $RUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;
 
@@ -80,14 +81,26 @@ cat $PATH_SAMPLE_SHEET | awk -F',' "{ if (\$2 == $LANE) { print;} }" >> $TMPDIR/
 #cat $PATH_SAMPLE_SHEET | perl -e "while(<>){ if(/FCID,Lane,|$FLOWCELL_ID,$LANE,/){ print; }}" | cut -f1,2,3,4,5,6,7,8,9,10 -d ',' > $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
 #cp $PATH_SAMPLE_SHEET $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
 
-cat $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
-
 #run info
 echo "`$NOW`$PATH_SEQRUN_DIR/RunInfo.xml"
 cp $PATH_SEQRUN_DIR/RunInfo.xml $TMPDIR/$RUN_NAME
 #run parameters
 echo "`$NOW`$PATH_SEQRUN_DIR/runParameters.xml"
 cp $PATH_SEQRUN_DIR/runParameters.xml $TMPDIR/$RUN_NAME
+
+echo " MIXED INDEXES $MIXED_INDEXES"
+if [ "$MIXED_INDEXES" -gt "0" ];then
+#	cat $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
+	echo "`$NOW` Mixed indexes run $MIXED_INDEXES"
+        #delete second Index from RunInfo.xml
+        sed -i '/Read Number\=\"3\"/d' $TMPDIR/$RUN_NAME/RunInfo.xml
+#	cat $TMPDIR/$RUN_NAME/RunInfo.xml
+        # set to 0 IndexRead2 in runParameters.xml
+        sed -i "s/\(<IndexRead2>\).*\(<\/IndexRead2>\)/\10\2/" $TMPDIR/$RUN_NAME/runParameters.xml
+#	cat $TMPDIR/$RUN_NAME/runParameters.xml
+fi
+
+cat $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
 
 #intensities config
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/config.xml"
@@ -239,8 +252,7 @@ do
 		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/Unaligned/$PROJECT_DIR/$SAMPLE_NAME
 			
 		#make distination folders based on run date and sample name
-		# XXXXX era 770
-		mkdir -m 750 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/$SAMPLE_NAME
+		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/$SAMPLE_NAME
 		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE
 		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq
 

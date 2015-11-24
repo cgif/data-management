@@ -15,7 +15,9 @@ Follow this path
 
 #projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
 
-You have to use your College's username and password
+User Name: #customerUsername
+Password: #passwd
+Authentication Type: Standard
 
 
 The data will be available for one month from the date of this e-mail.

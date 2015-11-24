@@ -15,49 +15,6 @@ Follow this path
 
 #projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
 
-User Name: #customerUsername
-Password: #passwd
-Authentication Type: Standard
-
-
-The data will be available for one month from the date of this e-mail.
-
-Please refer to the sample sheet extracts in the sample folders for facility sample ID to user sample name mappings.
-
-Kind regards
-
--- 
-
-NIHR Imperial BRC Genomics Facility
-Imperial College London
-
-Commonwealth Building
-Room 4N5
-Du Cane Road
-London, W12 0NN
-United Kingdom
-
-phone +44 (0)20 3313 4766
-fax   +44 (0)20 8383 8320
-
-www.imperial.ac.uk/genomicsfacility 
-To: #customerEmail
-Cc: igf@imperial.ac.uk
-Subject: [Imperial BRC Genomics Facility] Sequencing data available for download - #projectName
-From: igf@imperial.ac.uk
-MIME-Version: 1.0
-Content-Type: text/plain
-
-Dear #customerName,
-
-Your sequencing data is available for download from:
-
-http://eliot.med.ic.ac.uk:8080/idrop-web
-
-Follow this path
-
-#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
-
 You have to use your College's username and password and Authentication Type PAM
 
 You can download your data via a web browser or via the icommand client on cx1 configured appropriately 

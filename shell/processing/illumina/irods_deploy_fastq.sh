@@ -73,6 +73,13 @@ customer_passwd=`echo $customers_info|cut -d ',' -f4`
 customer_email=`echo $customers_info|cut -d ',' -f5`
 
 echo "UTENTE $customer_username"
+# check if is internal customer
+ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "External customer"
+    externalUser="Y"
+fi
 
 echo "$NOW checking if user already exists ..."
 irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
@@ -83,9 +90,10 @@ then
 	echo "$NOW creating user ..."
 	# make user
 	iadmin mkuser $customer_username#igfZone rodsuser
-	# set a password
-	iadmin moduser $customer_username#igfZone password $customer_passwd
-
+	#external user set a password
+	if [ $externalUser eq "Y" ]; then
+		iadmin moduser $customer_username#igfZone password $customer_passwd
+	fi
 fi
 #ichmod -rM own igf /igfZone/home/$customer_username
 #ichmod -rM inherit /igf/Zone/home/$customer_username
@@ -103,7 +111,7 @@ iput -K -fP -R eliotResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/hom
 
 #set expire date
 isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
-imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz fastq $customer_username $HIGHTLIGHT
+imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "fastq - $PROJECT_TAG - $TODAY" $customer_username $HIGHTLIGHT
 imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
 
 ichmod -rM read $customer_username /igfZone/home/$customer_username/
@@ -118,7 +126,11 @@ if [[ $customer_email != *"@"* ]]; then
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 fi
 customer_mail=customer_mail.$PROJECT_TAG
-cp $MAIL_TEMPLATE_PATH/customer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+if [ $externalUser = "Y" ]; then
+	cp $MAIL_TEMPLATE_PATH/ecustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+else
+	cp $MAIL_TEMPLATE_PATH/icustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+fi
 chmod 770 $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#customerEmail/$customer_email/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#customerName/$customer_name/" $RUN_DIR_BCL2FASTQ/$customer_mail

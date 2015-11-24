@@ -111,7 +111,7 @@ iput -K -fP -R eliotResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/hom
 
 #set expire date
 isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
-imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "fastq - $PROJECT_TAG - $TODAY" $customer_username $HIGHTLIGHT
+imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
 imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
 
 ichmod -rM read $customer_username /igfZone/home/$customer_username/

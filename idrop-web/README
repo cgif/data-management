@@ -1,0 +1,5 @@
+to compile install grails 2.5
+goes into idrop-web directory
+
+#command
+grails war idrop-web.war

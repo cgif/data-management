@@ -13,7 +13,7 @@ http://eliot.med.ic.ac.uk:8080/idrop-web
 
 Follow this path
 
-#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
+#projectName/bam/#projectRunDate/#projectRunDate.tar.gz
 
 You have to use your College's username and password and Authentication Type PAM
 
@@ -44,7 +44,7 @@ You can download your data via a web browser or via the icommand client on cx1 c
 + Download your data:
 	- connect to cx1
 	- module load irods/4.2.0
-	- iget /igfZone/home/#customerUsername/#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
+	- iget /igfZone/home/#customerUsername/#projectName/bam/#projectRunDate/#projectRunDate.tar.gz
 
 
 The data will be available for one month from the date of this e-mail.

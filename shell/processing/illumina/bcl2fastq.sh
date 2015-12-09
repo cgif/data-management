@@ -84,9 +84,19 @@ cat $PATH_SAMPLE_SHEET | awk -F',' "{ if (\$2 == $LANE) { print;} }" >> $TMPDIR/
 #run info
 echo "`$NOW`$PATH_SEQRUN_DIR/RunInfo.xml"
 cp $PATH_SEQRUN_DIR/RunInfo.xml $TMPDIR/$RUN_NAME
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/RunInfo.xml"
+    exit 1
+fi
 #run parameters
 echo "`$NOW`$PATH_SEQRUN_DIR/runParameters.xml"
 cp $PATH_SEQRUN_DIR/runParameters.xml $TMPDIR/$RUN_NAME
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/runParameters.xml"
+    exit 1
+fi
 
 echo " MIXED INDEXES $MIXED_INDEXES"
 if [ "$MIXED_INDEXES" -gt "0" ];then
@@ -105,35 +115,75 @@ cat $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
 #intensities config
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/config.xml"
 cp $PATH_SEQRUN_DIR/Data/Intensities/config.xml $TMPDIR/$RUN_NAME/Data/Intensities
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/config.xml"
+    exit 1
+fi
 #RTA config
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/RTAConfiguration.xml"
 cp $PATH_SEQRUN_DIR/Data/Intensities/RTAConfiguration.xml $TMPDIR/$RUN_NAME/Data/Intensities
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/RTAConfiguration.xml"
+    exit 1
+fi
 
 #basecalls config
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/config.xml"
 cp $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/config.xml $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/config.xml"
+    exit 1
+fi
 
 #data
 
 #offsets
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/Offsets"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/Offsets $TMPDIR/$RUN_NAME/Data/Intensities
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/Offsets"
+    exit 1
+fi
 
 #intensities
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/L00${LANE}"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/L00${LANE}"
+    exit 1
+fi
 
 #basecalls
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE}"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE} $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/L00${LANE}"
+    exit 1
+fi
 
 #Matrix
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_*"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Matrix
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Matrix/s_${LANE}_*"
+    exit 1
+fi
 
 #Phasing
 echo "`$NOW`$PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_*"
 cp -r $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_* $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls/Phasing
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "`$NOW` ERROR copying $PATH_SEQRUN_DIR/Data/Intensities/BaseCalls/Phasing/s_${LANE}_*"
+    exit 1
+fi
 
 
 

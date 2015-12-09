@@ -13,7 +13,7 @@ http://eliot.med.ic.ac.uk:8080/idrop-web
 
 Follow this path
 
-#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
+#projectName/bam/#projectRunDate/#projectRunDate.tar.gz
 
 User Name: #customerUsername
 Password: #passwd

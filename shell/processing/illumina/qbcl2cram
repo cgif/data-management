@@ -64,6 +64,8 @@ BCL2FASTQ_VERSION=1.8.4
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 
+#SPLIT_SCRIPT
+SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
 
 #COMMAND LINE ARGS
 ##################
@@ -239,10 +241,6 @@ function submitTarResultsBcl2fastq {
                         sed -i -e "s/#projectTag/$project_tag/" $deploy_irods_fastq_script
                         sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $deploy_irods_fastq_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
-			#sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $deploy_irods_fastq_script
-			#sed -i -e "s/#deploymentTarPath/${DEPLOYMENT_TAR_BASE_DIR//\//\\/}/" $deploy_irods_fastq_script
-			#sed -i -e "s/#deploymentSymbolicLink/${deployment_symbolic_link//\//\\/}/" $deploy_irods_fastq_script
-			#sed -i -e "s/#deploymentSummaryPath/${bcl2fastq_summary_deployment//\//\\/}/" $deploy_irods_fastq_script
 
 			#submit job 
 			local log_output_path=`echo $deploy_irods_fastq_script | perl -pe 's/\.sh/\.log/g'`
@@ -590,7 +588,6 @@ function submitfastqcJobs {
 
 }
 
-
 #creates job scripts
 function submitBWAMEMJobs {
 
@@ -602,12 +599,11 @@ function submitBWAMEMJobs {
 
                 mkdir -m 770 -p $DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
                 local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
+		local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY
+		chmod 770 $path_scripts_dir
 
-                #initialise BWA job id list
-                local bwa_job_id_list=$ms_analysis_dir/job_id_list.txt
-                echo -n "" > $bwa_job_id_list
-                chmod 660 $bwa_job_id_list
-
+                SETUP_LOG=$path_scripts_dir/setup.log
+                echo "$project" >> $SETUP_LOG
                 #create summary directory on deployment server
                 local bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/bwa/$TODAY
                 ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bwa_summary_deployment" < /dev/null
@@ -616,203 +612,78 @@ function submitBWAMEMJobs {
                 scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
                 ssh $DEPLOYMENT_SERVER "chmod -R 664 $bwa_summary_deployment/*png" < /dev/null
 
-        done
 
-        while read row
-        do
-                local lane=`echo $row | cut -f1 -d ','`
-                local bcl2fastq_job_id=`echo $row | cut -f2 -d ','`
-
-                local rowcount=0
-                while read line
-                do
-
-                        #skip sample sheet header
-                        rowcount=$(( $rowcount + 1 ))
+                #variables to store job dependencies
+                splitfastq_dependencies="afterok"
+		local rowcount=0
+		while read line
+		do
+                      	#skip sample sheet header
+              		rowcount=$(( $rowcount + 1 ))
                         if [ "$rowcount" -eq "1" ]
                         then
-                                continue
+                               	continue
                         fi
 
-                        #skip samples not in current lane...
-                        local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
-                        if [ "$sample_lane" -ne "$lane" ]
-                        then
-                                continue
-                        fi
-
-                        #..for samples in current lane...
-                        local sample_name=`echo $line | cut -f3 -d ',' | perl -pe 's/\s//g'`
-                        local index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
-                        #local project_name=`echo $line | cut -f10 -d ',' | cut -d ':' -f1 | perl -pe 's/\s//g'`                        
                         local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`
-
-                        local path_reads_dir=$DATA_VOL_IGF/rawdata/$project_name/fastq/$SEQRUN_DATE/$sample_name
-                        local fastq_read1=${SEQRUN_NAME}_${index}_L00${lane}_R1_001.fastq.gz
-                        local fastq_read2=${SEQRUN_NAME}_${index}_L00${lane}_R2_001.fastq.gz
-
-                        local fastq_read1_no_ext=`basename $fastq_read1 .gz`
-                        local fastq_read2_no_ext=`basename $fastq_read2 .gz`
-
-                        #get reference FASTA file names
-                        local species=`echo $line | cut -f4 -d ',' | cut -f1 -d ':' | perl -pe 's/\s//g'`                    
-                        echo " XXXXX species $species"
-                        local assembly=`echo $line | cut -f4 -d ',' | cut -f2 -d ':' | perl -pe 's/\s//g'`
-                        echo " XXXXX assembly $assembly"
-                        local sequence_type=`echo $line | cut -f4 -d ',' | cut -f3 -d ':' | perl -pe 's/\s//g'`
-                        echo " XXXXX sequence_type $sequence_type"
-
-                        local reference_fasta_index=$DATA_VOL_IGF/resources/reference/index/bwa/eukaryote/$species/$assembly/$assembly.fa
-                        if [[ $sequence_type = "rna" ]]
+                        #skip project not in current lane...
+                        if [ "$project_name" != "$project" ]
                         then
-                                reference_fasta_index=$DATA_VOL_IGF/resources/reference/index/bowtie2/eukaryote/$species/$assembly/$assembly.fa
+                               	continue
                         fi
-                        echo " XXXXX reference_fasta_index $reference_fasta_index"
+                        local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+			while read row
+			do
+				local lane=`echo $row | cut -f1 -d ','`
 
-                        local reference_fasta_name=`basename $reference_fasta_index .gz`
+                       		if [ "$sample_lane" -ne "$lane" ]
+                       		then
+                               		continue
+                       		fi
 
-                        #get reference FASTA directory path
-                        local path_reference_fasta_dir=`dirname $reference_fasta_index`
+				local bcl2fastq_job_id=`echo $row | cut -f2 -d ','`
+				local jobIdcount=`echo $splitfastq_dependencies | grep $bcl2fastq_job_id | wc -l`
+				if [ "$jobIdcount" -eq "0" ];then
+                        		splitfastq_dependencies="$splitfastq_dependencies:$bcl2fastq_job_id"
+				fi
 
-                        local path_reference_fasta_no_ext=$path_reference_fasta_dir/$reference_fasta_name
-                        local path_reference_dict_dir=`echo $path_reference_fasta_dir | perl -pe 's/\/index\/bwa\//\/dict\//'`
-                        local reference_dict_name=`basename $reference_fasta_name .fa`
-                        reference_dict_name=${reference_dict_name}.dict
-                        local path_reference_dict=$path_reference_dict_dir/$reference_dict_name
+			done <$BCL2FASTQ_JOB_ID_LIST
 
-                        echo "`$NOW`creating and submitting job scripts:"
+               	done <$path_sample_sheet_reformatted
 
-                        #create directory structure for merged bam files;
-                        #each file will contain the same reads as in the original fastq file
-                        local path_results_dir=$DATA_VOL_IGF/rawdata/$project_name/bam/$TODAY/$sample_name
-                        # XXXX non lo sto usando
-                        local path_results_dir_cram=$DATA_VOL_IGF/rawdata/$project_name/cram/$TODAY/$sample_name
-
-                        if [ ! -e path_results_dir ]; then
-                                echo "`$NOW`creating BWA results directory $path_results_dir"
-                                mkdir -m 770 -p $path_results_dir
-                        # XXXX  non los to usando
-                                echo "`$NOW`creating CRAM directory $path_results_dir_cram"
-                                mkdir -m 770 -p $path_results_dir_cram
-                        fi
-
-                        local path_run_dir=$DATA_VOL_IGF/analysis/$project_name/bwa/$TODAY/$sample_name
-                        local path_scripts_dir=$path_run_dir/run
-                        local path_mapping_dir=$path_run_dir/mapping
-                        local path_tmp_dir=$path_run_dir/tmp
+		local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project
+                ########################################
+                #submit splitting job
+                echo "`$NOW`submitting job to split fastq files"
 
 
-                        if [ ! -e path_run_dir ]; then
-                                echo "`$NOW`creating BWA analysis directories in $path_results_dir"
-                                mkdir -m 770 -p $path_run_dir
-                                mkdir -m 770 -p $path_scripts_dir
-                                mkdir -m 770 -p $path_mapping_dir
-                                mkdir -m 770 -p $path_tmp_dir
-                        fi
+                local script_path=$path_scripts_dir/submitSplitFastq.$project.sh
+                cp $BWA_SCRIPTS_DIR/submitSplitFastq.sh $script_path
+                chmod 770 $script_path
 
-                        SETUP_LOG=$path_scripts_dir/setup.log
-                        echo -n "" > $SETUP_LOG
+                sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $script_path
+                sed -i -e "s/#pathSampleSheetReformatted/${PATH_SAMPLE_SHEET_REFORMATTED//\//\\/}/" $script_path
+                sed -i -e "s/#pathProjectTagDir/${project_rawdata_dir//\//\\/}/" $script_path
+                sed -i -e "s/#seqRunDate/$SEQRUN_DATE/" $script_path
+                sed -i -e "s/#seqRunName/$SEQRUN_NAME/" $script_path
+                sed -i -e "s/#projectTag/$project/" $script_path
+                sed -i -e "s/#bwaScriptDir/${BWA_SCRIPTS_DIR//\//\\/}/" $script_path
+                sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $script_path
+                sed -i -e "s/#deploymentBaseDir/${DEPLOYMENT_BASE_DIR//\//\\/}/" $script_path
+                sed -i -e "s/#queue/$QUEUE/" $script_path
+                sed -i -e "s/#inputSeqrunDir/${INPUT_SEQRUN_DIR//\//\\/}/" $script_path
+		
+                local log_path=`echo $script_path | perl -pe 's/\.sh/\.log/g'`
 
-                        #temporary directory for splitfastq results
-                        local splitfastq_output_dir=$path_tmp_dir/${fastq_read1_no_ext}_split
-                        mkdir -m 770 -p $splitfastq_output_dir
+                echo "`$NOW`submitting fastq splitting job:" >> $SETUP_LOG
+                echo "`$NOW`submitSplitFastq.$project.sh" >> $SETUP_LOG
+                echo -n "`$NOW`" >> $SETUP_LOG
+                echo "`$NOW`dependencies $splitfastq_dependencies" >> $SETUP_LOG
 
-                        ########################################
-                        #submit splitting jobs
-
-                        echo "`$NOW`submitting jobs to split fastq files into $READS_PER_RUN chunks... " >> $SETUP_LOG
-
-                        #variables to store job dependencies
-                        splitfastq_dependencies="afterok"
-
-                        for fastq in $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
-                        do
-
-                                local fastq_name=`basename $fastq .gz`
-
-                                #calculate required temp space
-                                local file_size_mb=$(( $FASTQ_FILE_SIZE_KB / 1024 ))
-                                local tmp_space_mb=$(( $file_size_mb * 2 ))
-
-                                local script_path=$path_scripts_dir/splitFastq.$fastq_name.sh
-                                cp $BWA_SCRIPTS_DIR/splitFastq.sh $script_path
-                                chmod 770 $script_path
-
-                                sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_SPLITFASTQ/" $script_path
-                                sed -i -e "s/#threads/$THREADS_PER_RUN_SPLITFASTQ/" $script_path
-                                sed -i -e "s/#tmpSpace/$tmp_space_mb/" $script_path
-                                sed -i -e "s/#inputFastq/${fastq//\//\\/}/" $script_path
-                                sed -i -e "s/#outputDir/${splitfastq_output_dir//\//\\/}/" $script_path
-                                sed -i -e "s/#readsPerChunk/$READS_PER_RUN_BWA/" $script_path
-
-                                local log_path=`echo $script_path | perl -pe 's/\.sh/\.log/g'`
-
-                                echo "`$NOW`submitting fastq splitting job:" >> $SETUP_LOG
-                                echo "`$NOW`splitFastq.$fastq_name.sh" >> $SETUP_LOG
-                                echo -n "`$NOW`" >> $SETUP_LOG
-
-                                echo "qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path"
-                                local job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_path $script_path`
-                                echo $job_id >> $SETUP_LOG
-
-                                splitfastq_dependencies="$splitfastq_dependencies:$job_id"
-
-                        done;
-
-                        #######################
-
-                        local bwa_summary_results=$DATA_VOL_IGF/analysis/$project_name/bwa/$TODAY
-                        bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project_name/bwa/$TODAY
-                        local BWA_SUMMARY_RESULTS=$DEPLOYMENT_BASE_DIR/$project_name/bwa/
-
-                        #create summary directory on deployment server
-                        local bwamapping_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project_name/bwa
-                        local output_prefix=$fastq_read1_no_ext.vs.$reference_fasta_name
-
-                        local bwa_mapping_script=$path_scripts_dir/submitMappingScript.$output_prefix.sh
-                        cp $BWA_SCRIPTS_DIR/submitMappingScript.sh $bwa_mapping_script
-                        chmod 770 $bwa_mapping_script
-
-                        sed -i -e "s/#baseDir/${BWA_SCRIPTS_DIR//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#setupLog/${SETUP_LOG//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathTmpDir/${path_tmp_dir//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#fastqRead1NoExt/$fastq_read1_no_ext/" $bwa_mapping_script
-                        sed -i -e "s/#patternRead1/$PATTERN_READ_1/" $bwa_mapping_script
-                        sed -i -e "s/#patternRead2/$PATTERN_READ_2/" $bwa_mapping_script
-                        sed -i -e "s/#queue/$QUEUE/" $bwa_mapping_script
-                        sed -i -e "s/#pathScriptsDir/${path_scripts_dir//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathResultsDir/${path_results_dir//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathMappingDir/${path_mapping_dir//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathReferenceFastaNoExt/${path_reference_fasta_no_ext//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathRunDir/${path_run_dir//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#today/$TODAY/" $bwa_mapping_script
-                        sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $bwa_mapping_script
-                        sed -i -e "s/#summaryDeployment/${bwa_summary_deployment//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#summaryResults/${bwa_summary_results//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#walltimeHoursPerRun/$WALLTIME_HOURS_PER_RUN_BWA/" $bwa_mapping_script
-                        sed -i -e "s/#threadsPerRun/$THREADS_PER_RUN_BWA/" $bwa_mapping_script
-                        sed -i -e "s/#cram2BamConversion/T/"  $bwa_mapping_script
-                        sed -i -e "s/#samtoolsVersion/$SAMTOOLS_VERSION/" $bwa_mapping_script
-                        sed -i -e "s/#bwaVersion/$BWA_VERSION/" $bwa_mapping_script
-                        sed -i -e "s/#pathReferenceSeqDict/${path_reference_dict//\//\\/}/" $bwa_mapping_script
-                        sed -i -e "s/#pathOutputCramDir/${path_results_dir_cram//\//\\/}/"  $bwa_mapping_script
-                        sed -i -e "s/#deploy_on_irods/$IRODS_DEPLOYMENT/"  $bwa_mapping_script
-
-
-                        local bwa_log_path=`echo $bwa_mapping_script | perl -pe 's/\.sh/\.log/g'`
-
-                        echo "`$NOW`submitting submitMappingScript job for $fastq_read1 AND $fastq_read2 :"   >> $SETUP_LOG
-                        echo "`$NOW`submitMappingScript.$output_prefix.sh"   >> $SETUP_LOG
-
-                        job_id=`qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script`
-                        echo "qsub -W depend=$splitfastq_dependencies -o $bwa_log_path $bwa_mapping_script"
-                        echo "`$NOW`Job ID:$job_id"  >> $SETUP_LOG
-
-                done <$path_sample_sheet_reformatted
-
-        done <$BCL2FASTQ_JOB_ID_LIST
-
-        echo "`$NOW`All done!"
+                echo "qsub -W depend=afterok:$splitfastq_dependencies -o $log_path $script_path"
+                local job_id=`qsub -W depend=$splitfastq_dependencies -o $log_path $script_path`
+                echo $job_id >> $SETUP_LOG
+        done
 }
 						
 #get run name, run date and flow cell ID
@@ -925,17 +796,17 @@ do
 done
 
 # SUBMIT JOB TO TAR RESALTS OF BCL2FASTQ RUNS
-submitTarResultsBcl2fastq $PATH_SAMPLE_SHEET_REFORMATTED $BCL2FASTQ_JOB_ID_LIST
+#submitTarResultsBcl2fastq $PATH_SAMPLE_SHEET_REFORMATTED $BCL2FASTQ_JOB_ID_LIST
 
 
 # FASTQC RUNS
 #############
-submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
+#submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
-exit 0
+#exit 0
 
 # BWA RUNS
 #############
 
-#submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED
+submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED
 

@@ -27,7 +27,7 @@ NOW="date +%Y-%m-%d%t%T%t"
 IRODS_USER=igf
 IRODS_PWD=igf
 
-SSH_USER=mmuelle1
+SSH_USER=mcosso
 
 #get all the runs in the sequencing-runs-directory
 #echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
@@ -35,7 +35,7 @@ RUNS=`ls --color=never $PATH_SEQRUNS_DIR`
 
 
 #log into irods with iinit [password]
-iinit $IRODS_PWD
+#iinit $IRODS_PWD
 
 #getting runs already registered in iRODS
 echo "`$NOW` getting runs already registered in iRODS..."

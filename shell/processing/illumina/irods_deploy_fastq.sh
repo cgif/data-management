@@ -28,17 +28,14 @@ CUSTOMER_FILE_PATH=#customerFilePath
 PROJECT_TAG=#projectTag
 MAIL_TEMPLATE_PATH=#mailTemplatePath
 PATH_TO_DESTINATION=#pathToDestination
-#DEPLOYMENT_SERVER=#deploymentServer
-#DEPLOYMENT_TAR_BASE_DIR=#deploymentTarPath
-#DEPLOYMENT_SYMBOLIC_LINK=#deploymentSymbolicLink
 HIGHTLIGHT="iRODSUserTagging:Star"
 
 IRODS_USER=igf
 IRODS_PWD=igf
 
-#ADDING FISTAQ FILES TO ELIOT(eliotResc)
+#ADDING FASTQ FILES TO ELIOT(eliotResc)
 module load irods/4.2.0
-iinit igf
+#iinit igf
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; tar hcfz $SEQ_RUN_DATE.tar.gz  $SEQ_RUN_DATE"	

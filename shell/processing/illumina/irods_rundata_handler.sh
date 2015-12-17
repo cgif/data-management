@@ -129,7 +129,7 @@ cd $TRANSFER_DIR
 md5sum $RUN_NAME.tar > $RUN_NAME.tar.md5
 
 #log into irods using iinit [password]
-iinit $IRODS_PWD
+#iinit $IRODS_PWD
 
 echo "`$NOW` Registering files into iRODS..."
 #give rx permissions to irods to enable registering..
@@ -163,7 +163,8 @@ ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR
 #after registration, on cx1, retrieve the files into their respective directories
 #-K verify the checksum
 echo "`$NOW` Retrieving archive from iRODS..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iinit $IRODS_PWD; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
+#ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iinit $IRODS_PWD; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
+ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
 
 #check the md5 checksum of the tarball
 #no longer needed as we calculate and check it with iRODS

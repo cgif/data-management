@@ -39,7 +39,7 @@ THREADS_PER_RUN_BCL2FASTQ=2
 PATH_ADAPTER_DIR=$BASEDIR/../../../resources
 
 #TARBCL2FASTQ
-TARRESULTS_SCRIPT_DIR=$BASEDIR/irods_deploy_fastq.sh
+IRODS_FASTQ_DEPLOY_SCRIPT=$BASEDIR/irods_deploy_fastq.sh
 DEPLOYMENT_TAR_BASE_DIR=/data/www/html/report/data
 
 #SPLIT FASTQ
@@ -65,7 +65,7 @@ SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 
 #SPLIT_SCRIPT
-SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
+#SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
 
 #COMMAND LINE ARGS
 ##################
@@ -153,15 +153,9 @@ function submitbcl2fastqJobs {
 }
 
 # creates job script to tar bcl2fastqresults
-function submitTarResultsBcl2fastq {
+function submitIrodsDeployFastq {
                 local path_sample_sheet_reformatted=$1
-                local bcl2fastq_job_id_list=$2
 	
-		chmod 660 $bcl2fastq_job_id_list $path_sample_sheet_reformatted
-		# for TEST
-                #echo $path_sample_sheet_reformatted
-                #echo $bcl2fastq_job_id_list
-
                 local rowcount=0
                 # lookup lanes for each project_tag
                 while read sampleSheetRow
@@ -217,7 +211,7 @@ function submitTarResultsBcl2fastq {
                                         job_id=`basename $bcl2fastq_job_id .cx1b`
                                         tarresults_job_dependency="$tarresults_job_dependency:$job_id"
 
-                                done <$bcl2fastq_job_id_list
+                                done <$BCL2FASTQ_JOB_ID_LIST
 				# for TEST
                                 #echo $tarresults_job_dependency
 				sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
@@ -230,7 +224,7 @@ function submitTarResultsBcl2fastq {
 			local deployment_symbolic_link=/www/html/report/project/$project_tag
 			local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
 
-                        cp $TARRESULTS_SCRIPT_DIR $deploy_irods_fastq_script
+                        cp $IRODS_FASTQ_DEPLOY_SCRIPT $deploy_irods_fastq_script
                         chmod 770 $deploy_irods_fastq_script
                         path_project_tag_dir=$DATA_VOL_IGF/rawdata/$project_tag/fastq
                         sed -i -e "s/#pathProjectTagDir/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
@@ -661,6 +655,7 @@ function submitBWAMEMJobs {
                 cp $BWA_SCRIPTS_DIR/submitSplitFastq.sh $script_path
                 chmod 770 $script_path
 
+                sed -i -e "s/#fastqGenDate/$TODAY/" $script_path
                 sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $script_path
                 sed -i -e "s/#pathSampleSheetReformatted/${PATH_SAMPLE_SHEET_REFORMATTED//\//\\/}/" $script_path
                 sed -i -e "s/#pathProjectTagDir/${project_rawdata_dir//\//\\/}/" $script_path
@@ -778,6 +773,9 @@ mixedIndexes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" |
 #remove second no index (it effects only mixed indexes run)
 sed -i -- 's/\(.*[A|C|G|T]\)-NNNNNNNN/\1/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
+
+#create the appropriate index for lane statistics
+cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 for LANE in $LANES
 do
 	while read line
@@ -792,21 +790,22 @@ do
 			break
 		fi
 	done <$PATH_SAMPLE_SHEET_REFORMATTED
+	#update the index file for this lane
+	sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${LANE}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
 	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED $LANE $adapter_type $mixedIndexes
 done
 
-# SUBMIT JOB TO TAR RESALTS OF BCL2FASTQ RUNS
-#submitTarResultsBcl2fastq $PATH_SAMPLE_SHEET_REFORMATTED $BCL2FASTQ_JOB_ID_LIST
+# DEPLOYS FASTQ ON IRODS
+#submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 
 # FASTQC RUNS
 #############
-#submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
+submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
 #exit 0
 
 # BWA RUNS
 #############
-
 submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED
 

@@ -6,6 +6,7 @@ use warnings;
 my $sample_sheet=$ARGV[0];
 my $run_info_xml=$ARGV[1];
 my $lane=$ARGV[2];
+my $mixedIndex=$ARGV[3];
 
 #parse RunInfo.xml
 my $flowcell_id=-1;
@@ -213,10 +214,15 @@ if($length_idx_read1 != -1){
 }
 
 #index read 2
-if($length_idx_read2 != -1){
-	$bases_mask=$bases_mask.",i".$length_idx2;
-	for(my $i = 0; $i < $length_idx_read2 - $length_idx2; $i++){
-		$bases_mask=$bases_mask."n";
+#XXXXXX if mixedIndex && paired-end just skip second index (change the mask)
+if($mixedIndex == 1 && $length_read2 != -1){
+	 $bases_mask=$bases_mask.",n*";
+} else {
+	if($length_idx_read2 != -1){
+		$bases_mask=$bases_mask.",i".$length_idx2;
+		for(my $i = 0; $i < $length_idx_read2 - $length_idx2; $i++){
+			$bases_mask=$bases_mask."n";
+		}
 	}
 }
 

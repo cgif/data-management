@@ -33,7 +33,7 @@ HIGHTLIGHT="iRODSUserTagging:Star"
 IRODS_USER=igf
 IRODS_PWD=igf
 
-#ADDING FASTQ FILES TO ELIOT(eliotResc)
+#ADDING FASTQ FILES TO WOOLF(woolfResc)
 module load irods/4.2.0
 iinit igf
 
@@ -108,8 +108,8 @@ echo "$NOW attaching meta-data run_name to run_date collection ..."
 imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
 
 echo "$NOW storing file in irods .... checksum"
-iput -k -fP -R eliotResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-iput -fP -R eliotResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+iput -k -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+iput -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
 #set expire date
 isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
@@ -120,7 +120,7 @@ ichmod -rM read $customer_username /igfZone/home/$customer_username/
 
 #now remove the tar file
 echo "`$NOW` remove tar from eliot server ..."
-#ssh login.cx1.hpc.ic.ac.uk "rm $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz*" 
+ssh login.cx1.hpc.ic.ac.uk "rm $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz*" 
 echo "`$NOW` Files have been deployed, Well done!"
 
 if [[ $customer_email != *"@"* ]]; then
@@ -142,5 +142,5 @@ sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
 sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 #now remove 
-#rm $RUN_DIR_BCL2FASTQ/$customer_mail
-#sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv
+rm $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv

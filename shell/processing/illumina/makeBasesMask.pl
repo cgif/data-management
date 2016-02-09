@@ -148,6 +148,7 @@ while(<IN>){
 				if($index_idx != -1 && $tokens[$index_idx] ne ""){
 					
 					my $seq=$tokens[$index_idx];
+					$seq =~ s/([A|C|G|T]*)N*/$1/;
 					my $length=length($seq);
 					$lengths_idx1{$length}="";
 					
@@ -156,7 +157,8 @@ while(<IN>){
 				#idx2
 				if($index2_idx != -1 && $tokens[$index2_idx] ne ""){
 					
-					my $seq=$tokens[$index_idx];
+					my $seq=$tokens[$index2_idx];
+					$seq =~ s/([A|C|G|T]*)N*/$1/;
 					my $length=length($seq);
 					$lengths_idx2{$length}="";
 					
@@ -172,10 +174,10 @@ while(<IN>){
 
 #get lengths of indexes
 my @keys_idx1 = sort {$a<=>$b} keys %lengths_idx1;
-my @keys_idx2 = sort {$a<=>$b} keys %lengths_idx1;
+my @keys_idx2 = sort {$a<=>$b} keys %lengths_idx2;
 
 my $length_idx1 = get_shortest_index_length(\@keys_idx1, 1);
-my $length_idx2 = get_shortest_index_length(\@keys_idx1, 2);
+my $length_idx2 = get_shortest_index_length(\@keys_idx2, 2);
 
 sub get_shortest_index_length {
 
@@ -202,6 +204,11 @@ sub get_shortest_index_length {
 
 #generate bases mask
 
+if ($length_idx1==0 && $length_idx2==0){
+	$length_idx1=$length_idx_read1;
+	$length_idx2=$length_idx_read2;
+}
+
 #read 1
 my $bases_mask="y".($length_read1-1)."n";
 
@@ -215,16 +222,17 @@ if($length_idx_read1 != -1){
 
 #index read 2
 #XXXXXX if mixedIndex && paired-end just skip second index (change the mask)
-if($mixedIndex == 1 && $length_read2 != -1){
-	 $bases_mask=$bases_mask.",n*";
-} else {
+#if($mixedIndex == 1 && $length_read2 != -1){
+#	 $bases_mask=$bases_mask.",n*";
+#} else {
 	if($length_idx_read2 != -1){
+		#$bases_mask=$bases_mask.",i".$length_idx_read2;
 		$bases_mask=$bases_mask.",i".$length_idx2;
 		for(my $i = 0; $i < $length_idx_read2 - $length_idx2; $i++){
 			$bases_mask=$bases_mask."n";
 		}
 	}
-}
+#}
 
 #read 2
 if($length_read2 != -1){

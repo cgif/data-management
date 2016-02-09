@@ -92,7 +92,7 @@ then
 	# make user
 	iadmin mkuser $customer_username#igfZone rodsuser
 	#external user set a password
-	if [ $externalUser eq "Y" ]; then
+	if [ $externalUser = "Y" ]; then
 		iadmin moduser $customer_username#igfZone password $customer_passwd
 	fi
 fi
@@ -142,5 +142,5 @@ sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
 sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 #now remove 
-rm $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv
+#rm $RUN_DIR_BCL2FASTQ/$customer_mail
+#sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv

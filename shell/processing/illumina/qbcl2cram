@@ -59,6 +59,7 @@ WORKFLOWS_RESOURCES_DIR=$BASEDIR/../../../../workflows/shell/resources
 GROUP_VOL_CGI=/groupvol/cgi
 BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
 SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
+TOPHAT_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/tophat
 
 BCL2FASTQ_VERSION=1.8.4
 SAMTOOLS_VERSION=1.1
@@ -318,6 +319,7 @@ function submitfastqcJobs {
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 		ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
 	done
@@ -537,6 +539,9 @@ function submitfastqcJobs {
 		echo "`$NOW`Job ID: $job_id"
 		echo -e "$job_id" >> $job_id_list		
 		chmod 660 $job_id_list	
+
+
+		#count 
 				
 	done <$BCL2FASTQ_JOB_ID_LIST	
 		
@@ -550,6 +555,7 @@ function submitfastqcJobs {
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null 
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 	ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null 
 	
 	echo "`$NOW`creating and submitting job script for summary of results"
@@ -609,8 +615,8 @@ function submitBWAMEMJobs {
         for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
         do
 
-                mkdir -m 770 -p $DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
                 local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
+                mkdir -m 770 -p $ms_analysis_dir
 		local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY
 		chmod 770 $path_scripts_dir
 
@@ -699,8 +705,48 @@ function submitBWAMEMJobs {
         done
 }
 
- #creates job scripts
- function submitTOPHAT2Jobs {
+#creates job scripts
+function submitMappingJob {
+	local path_sample_sheet_reformatted=$1
+	for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
+        do
+                while read line
+                do
+                        #skip sample sheet header
+                        rowcount=$(( $rowcount + 1 ))
+                        if [ "$rowcount" -eq "1" ]
+                        then
+                                continue
+                        fi
+
+                        local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`
+                        #skip project not in current lane...
+                        if [ "$project_name" != "$project" ]
+                        then
+                                continue
+                        fi
+			sequence_type=`echo $line | cut -f4 -d ',' | cut -f3 -d ':' | perl -pe 's/\s//g'`
+			echo "sequence_type=$sequence_type"
+			if [[ $sequence_type = "rna" ]]
+			then
+				# TOPHAT RUNS
+				#############
+				echo "TOPHAT"
+				submitTOPHATJobs $PATH_SAMPLE_SHEET_REFORMATTED
+			else
+				# BWA RUNS
+				#############
+				echo "BWA"
+				submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED
+			fi
+			
+		done <$path_sample_sheet_reformatted	
+	done
+
+}
+
+#creates job scripts
+function submitTOPHATJobs {
  
          local path_sample_sheet_reformatted=$1
  
@@ -708,68 +754,68 @@ function submitBWAMEMJobs {
          for project in `sed 1d $path_sample_sheet_reformatted | cut -d ',' -f10 | perl -e 'while(<>){ s/\s//g; print "$_\n";}' | sort | uniq`
          do
  
-                 mkdir -m 770 -p $DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
-                 local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
- 		local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY
+                local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/tophat/$TODAY/multisample
+                mkdir -m 770 -p $ms_analysis_dir
+ 		local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/tophat/$TODAY
  		chmod 770 $path_scripts_dir
  
-                 SETUP_LOG=$path_scripts_dir/setup.log
-                 echo "$project" >> $SETUP_LOG
-                 #create summary directory on deployment server
-                 local bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/bwa/$TODAY
-                 ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bwa_summary_deployment" < /dev/null
-                 scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
-                 scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
-                 scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
-                 ssh $DEPLOYMENT_SERVER "chmod -R 664 $bwa_summary_deployment/*png" < /dev/null
+                SETUP_LOG=$path_scripts_dir/setup.log
+                echo "$project" >> $SETUP_LOG
+                #create summary directory on deployment server
+                local tophat_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/tophat/$TODAY
+                ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $tophat_summary_deployment" < /dev/null
+                scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
+                scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
+                scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
+                ssh $DEPLOYMENT_SERVER "chmod -R 664 $bwa_summary_deployment/*png" < /dev/null
  
  
-                 #variables to store job dependencies
-                 splitfastq_dependencies="afterok"
+                #variables to store job dependencies
+                mapping_dependencies="afterok"
  		local rowcount=0
  		while read line
  		do
                        	#skip sample sheet header
                		rowcount=$(( $rowcount + 1 ))
-                         if [ "$rowcount" -eq "1" ]
-                         then
-                                	continue
-                         fi
+                        if [ "$rowcount" -eq "1" ]
+                        then
+                              	continue
+                        fi
  
-                         local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`
-                         #skip project not in current lane...
-                         if [ "$project_name" != "$project" ]
-                         then
-                                	continue
-                         fi
-                         local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+                        local project_name=`echo $line | cut -f10 -d ',' | perl -pe 's/\s//g'`
+                        #skip project not in current lane...
+                        if [ "$project_name" != "$project" ]
+                        then
+                               	continue
+                        fi
+                        local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
  			while read row
  			do
  				local lane=`echo $row | cut -f1 -d ','`
  
-                        		if [ "$sample_lane" -ne "$lane" ]
-                        		then
-                                		continue
-                        		fi
+                        	if [ "$sample_lane" -ne "$lane" ]
+                        	then
+                               		continue
+                        	fi
  
  				local bcl2fastq_job_id=`echo $row | cut -f2 -d ','`
- 				local jobIdcount=`echo $splitfastq_dependencies | grep $bcl2fastq_job_id | wc -l`
+ 				local jobIdcount=`echo $mapping_dependencies | grep $bcl2fastq_job_id | wc -l`
  				if [ "$jobIdcount" -eq "0" ];then
-                         		splitfastq_dependencies="$splitfastq_dependencies:$bcl2fastq_job_id"
+                         		mapping_dependencies="$mapping_dependencies:$bcl2fastq_job_id"
  				fi
  
  			done <$BCL2FASTQ_JOB_ID_LIST
  
-                	done <$path_sample_sheet_reformatted
+               	done <$path_sample_sheet_reformatted
  
  		local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project
                  ########################################
                  #submit splitting job
-                 echo "`$NOW`submitting job to split fastq files"
+                 echo "`$NOW`submitting job to map fastq files"
  
  
-                 local script_path=$path_scripts_dir/submitSplitFastq.$project.sh
-                 cp $BWA_SCRIPTS_DIR/submitSplitFastq.sh $script_path
+                 local script_path=$path_scripts_dir/submitTophat2.$project.sh
+                 cp $TOPHAT_SCRIPTS_DIR/submitTophat2.sh $script_path
                  chmod 770 $script_path
  
                  sed -i -e "s/#fastqGenDate/$TODAY/" $script_path
@@ -779,7 +825,7 @@ function submitBWAMEMJobs {
                  sed -i -e "s/#seqRunDate/$SEQRUN_DATE/" $script_path
                  sed -i -e "s/#seqRunName/$SEQRUN_NAME/" $script_path
                  sed -i -e "s/#projectTag/$project/" $script_path
-                 sed -i -e "s/#bwaScriptDir/${BWA_SCRIPTS_DIR//\//\\/}/" $script_path
+                 sed -i -e "s/#TophatScriptDir/${TOPHAT_SCRIPTS_DIR//\//\\/}/" $script_path
                  sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $script_path
                  sed -i -e "s/#deploymentBaseDir/${DEPLOYMENT_BASE_DIR//\//\\/}/" $script_path
                  sed -i -e "s/#queue/$QUEUE/" $script_path
@@ -787,13 +833,13 @@ function submitBWAMEMJobs {
  		
                  local log_path=`echo $script_path | perl -pe 's/\.sh/\.log/g'`
  
-                 echo "`$NOW`submitting fastq splitting job:" >> $SETUP_LOG
-                 echo "`$NOW`submitSplitFastq.$project.sh" >> $SETUP_LOG
+                 echo "`$NOW`submitting fastq mapping job:" >> $SETUP_LOG
+                 echo "`$NOW`submitTophat2.$project.sh" >> $SETUP_LOG
                  echo -n "`$NOW`" >> $SETUP_LOG
-                 echo "`$NOW`dependencies $splitfastq_dependencies" >> $SETUP_LOG
+                 echo "`$NOW`dependencies $mapping_dependencies" >> $SETUP_LOG
  
-                 echo "qsub -W depend=afterok:$splitfastq_dependencies -o $log_path $script_path"
-                 local job_id=`qsub -W depend=$splitfastq_dependencies -o $log_path $script_path`
+                 echo "qsub -W depend=afterok:$mapping_dependencies -o $log_path $script_path"
+                 local job_id=`qsub -W depend=$mapping_dependencies -o $log_path $script_path`
                  echo $job_id >> $SETUP_LOG
          done
 }
@@ -809,7 +855,7 @@ CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
 #DEPLOYMENT STRUCTURE
 #creates deployment results structure on eliot webserver
 while read row
-        do
+do
         project_tag=`echo $row|cut -d ',' -f1`
         #better to do on cx1 on the cluster
         #checks if the project directory already exists in the web server
@@ -889,32 +935,44 @@ $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTE
 mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
 #echo "mixedIndexLanes= $mixedIndexLanes"
 ### get sequencing type for following mapping
-sequence_type=`echo $sample_sheet_row | cut -f4 -d ',' | cut -f3 -d ':' | perl -pe 's/\s//g'`
-sed -i -- 's/\(.*[A|C|G|T]\)-NNNNNNNN/\1/g' $PATH_SAMPLE_SHEET_REFORMATTED
+sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
+echo "sequence_type=$sequence_type"
+sed -i 's/\(.*[A|C|G|T]\)N*-N\{8\}/\1/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 #create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 for LANE in $LANES
 do
+#	
+	min_idx_length=100	
 	while read line
         do
-		#skip samples not in current lane...
+#		#skip samples not in current lane...
 		sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
 		if [ $sample_lane == $LANE ]
 		then
 			adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
-			#for TEST
-			echo "ADAPTER TYPE $adapter_type"
-			break
+			index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
+#	#		echo "INDEX $index SIZE ${#index}"
+			if [  ${#index} -lt $min_idx_length ]
+			then
+				min_idx_length=${#index}
+			fi 
+
+#			#for TEST
+#			#echo "ADAPTER TYPE $adapter_type"
+#			#break
+#			
 		fi
 	done <$PATH_SAMPLE_SHEET_REFORMATTED
-	#update the index file for this lane
+#	#update the index file for this lane
 	sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${LANE}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
-	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED $LANE $adapter_type $mixedIndexLanes
+	cat $PATH_SAMPLE_SHEET_REFORMATTED | grep "^,$LANE,\|Index" | awk -F $',' 'BEGIN {OFS = FS} { $5 = substr($5, 1,  "'"$min_idx_length"'") } 5' > ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}
+	submitbcl2fastqJobs $INPUT_SEQRUN_DIR $PATH_SAMPLE_SHEET ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE} $LANE $adapter_type $mixedIndexLanes
 done
 
 # DEPLOYS FASTQ ON IRODS
-submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
+#submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 
 # FASTQC RUNS
@@ -925,13 +983,5 @@ exit 0
 
 # MAPPING RUNS
 ##############
-if [[ $sequence_type = "rna" ]]
-then
-	# TOPHAT RUNS
-	#############
-	submitTOPHAT2Jobs $PATH_SAMPLE_SHEET_REFORMATTED
-else
-	# BWA RUNS
-	#############
-	submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED
-fi
+submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
+

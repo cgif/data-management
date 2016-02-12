@@ -937,7 +937,7 @@ mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN
 ### get sequencing type for following mapping
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
-sed -i 's/\(.*[A|C|G|T]\)N*-N\{8\}/\1/g' $PATH_SAMPLE_SHEET_REFORMATTED
+sed -i 's/\([A|C|G|T]\+\)N*-*N*/\1/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 #create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html

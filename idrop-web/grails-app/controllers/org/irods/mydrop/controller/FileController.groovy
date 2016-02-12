@@ -73,7 +73,15 @@ class FileController {
 			log.info("opened input stream")
 
 			response.setContentType("application/octet-stream")
-			response.setContentLength((int) length)
+                        
+                        // mcosso commented wrong cast does not works for file longer to 2gb
+                        // so changed using  response.addHeader("Content-Length",strLong)
+                        //response.setContentLength((int) length)
+                        log.info("casted file length = ${(int)length}")
+                        
+                        String strLong = Long.toString(length);
+                        response.addHeader("Content-Length",strLong)                        
+                        
 			response.setHeader("Content-disposition", "attachment;filename=\"${irodsFile.name}\"")
 
 			//response.outputStream << irodsFileInputStream // Performing a binary stream copy

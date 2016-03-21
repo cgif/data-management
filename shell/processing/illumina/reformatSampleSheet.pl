@@ -115,8 +115,14 @@ while(<IN>){
 			#FCID
 			print OUT "$flowcell_id,";
 			#Lane
+			#
+			# MCOSSO if miseq and mixedIndexes split double index and single index in two different lanes
 			if($instrument eq "miseq"){
-				print OUT "1,";
+				#if($index2_idx != -1 && $tokens[$index2_idx] ne "" && $tokens[$index2_idx] =~ "^N+"){
+				#	print OUT "2,";
+				#} else {
+					print OUT "1,";
+				#}
 			} else {
 				print OUT $tokens[$lane_idx].",";
 			}

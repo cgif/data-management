@@ -35,7 +35,7 @@ IRODS_PWD=igf
 
 #ADDING FASTQ FILES TO WOOLF(woolfResc)
 module load irods/4.2.0
-iinit igf
+#iinit igf
 
 echo "`$NOW` genereting global SampleSheet for the project ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; cat $SEQ_RUN_DATE/*/SampleSheet.* | grep -v FCID > $SEQ_RUN_DATE/SampleSheet.csv"	
@@ -92,12 +92,12 @@ then
 	# make user
 	iadmin mkuser $customer_username#igfZone rodsuser
 	#external user set a password
-	if [ $externalUser = "Y" ]; then
+	if [[ $externalUser == "Y" ]]; then
 		iadmin moduser $customer_username#igfZone password $customer_passwd
 	fi
 fi
-ichmod -rM own igf /igfZone/home/$customer_username
-ichmod -rM inherit /igfZone/home/$customer_username
+ichmod own igf /igfZone/home/$customer_username
+ichmod -r inherit /igfZone/home/$customer_username
 
 # creates the deploy structure
 imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
@@ -116,7 +116,7 @@ isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$
 imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
 imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
 
-ichmod -rM read $customer_username /igfZone/home/$customer_username/
+ichmod -r read $customer_username /igfZone/home/$customer_username/
 
 #now remove the tar file
 echo "`$NOW` remove tar from eliot server ..."
@@ -128,7 +128,7 @@ if [[ $customer_email != *"@"* ]]; then
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 fi
 customer_mail=customer_mail.$PROJECT_TAG
-if [ $externalUser = "Y" ]; then
+if [[ $externalUser == "Y" ]]; then
 	cp $MAIL_TEMPLATE_PATH/ecustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
 else
 	cp $MAIL_TEMPLATE_PATH/icustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail

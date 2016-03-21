@@ -86,91 +86,75 @@ close(RI);
 #parse sample sheet
 open(IN, "<$sample_sheet") or die "Unable to open sample sheet $sample_sheet: $!\n";
 
-my $instrument="hiseq";
 
 my $lane_idx = -1;
 my $index_idx = -1;
-my $index2_idx = -1;
 
 my %lengths_idx1;
 my %lengths_idx2;
 
 while(<IN>){
-
-	#go to 'Data' section
-	if(/\[Data\]/){
+	#my $header_line = <IN>; 
+	#chomp($header_line);
+	chomp;
+			
+	#get column indexes
+	#my @column_names = split(',', $header_line);
+	my @column_names = split(',');
+		
+		
+	my $idx = 0;
+	foreach my $name (@column_names){
 	
-		my $header_line = <IN>; 
-		chomp($header_line);
+		if($name =~ /Lane/){
+			$lane_idx=$idx;
+		}
+		if($name =~ /Index/){
+			$index_idx=$idx;
+		}
+		$idx++;
+	}
+
+	while(<IN>){
+	
+		chomp;
+		my @tokens = split(',');	
+		my $token_count=@tokens;
+		my $current_lane=$tokens[$lane_idx];
+
+	
+		if($current_lane == $lane){
 				
-		#get column indexes
-		my @column_names = split(',', $header_line);
-		
-		
-		my $idx = 0;
-		foreach my $name (@column_names){
-		
-			if($name =~ /Lane/){
-				$lane_idx=$idx;
-			}
-		
-			if($name =~ /^index$/){
-				$index_idx=$idx;
-			}
-			if($name =~ /index2/){
-				$index2_idx=$idx;
-			}
-			
-			$idx++;
-		
-		}
-
-		if($lane_idx == -1){			
-			$instrument="miseq";
-		}
-
-		while(<IN>){
-		
-			chomp;
-			my @tokens = split(',');	
-			my $token_count=@tokens;
-			my $current_lane=1;
-
-			if($instrument eq "hiseq"){
-				$current_lane=$tokens[$lane_idx];
-			} else {
-				$current_lane=1;
-			}
-		
-			if($current_lane == $lane || $instrument eq "miseq"){
-					
-				#idx1
-				if($index_idx != -1 && $tokens[$index_idx] ne ""){
-					
-					my $seq=$tokens[$index_idx];
-					$seq =~ s/([A|C|G|T]*)N*/$1/;
-					my $length=length($seq);
-					$lengths_idx1{$length}="";
-					
-				}
-			
-				#idx2
-				if($index2_idx != -1 && $tokens[$index2_idx] ne ""){
-					
-					my $seq=$tokens[$index2_idx];
-					$seq =~ s/([A|C|G|T]*)N*/$1/;
-					my $length=length($seq);
+			#idx
+			if($index_idx != -1 && $tokens[$index_idx] ne ""){
+				
+				my $seq=$tokens[$index_idx];
+				my ($idx1, $idx2) = split('-',$seq);
+				my $length=length($idx1);
+				$lengths_idx1{$length}="";
+			#print " +++++++++++++++++++++++++++++++++ IDX1 $idx1\n";
+			#print " +++++++++++++++++++++++++++++++++ IDX1 $length\n";
+				my $lenght=0;
+				if($idx2 ne ""){
+					my $length=length($idx2);
 					$lengths_idx2{$length}="";
-					
+					#print " +++++++++++++++++++++++++++++++++ IDX2 index $idx2\n";
+					#print " +++++++++++++++++++++++++++++++++ IDX2 lenght $length\n";
+				}else
+				{
+					$lengths_idx2{0}="";
 				}
-		
+			
 			}
+			
+		}
 
-		} #end of while(<IN>)
+	} #end of while(<IN>)
 
-	} #end of if(/\[Data\]/)
 	
 } #end of while(<IN>)
+
+
 
 #get lengths of indexes
 my @keys_idx1 = sort {$a<=>$b} keys %lengths_idx1;

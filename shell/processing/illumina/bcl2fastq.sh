@@ -55,6 +55,8 @@ FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$id=<>; chomp($id); if(!
 #FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$flowcell_id=<>; $flowcell_id=substr($flowcell_id,1,9); print "$flowcell_id\n"'`
 LANE=#lane
 BASES_MASK=#basesMask
+LANE=#lane
+ILANE=#ilane
 
 #READ=#read
 
@@ -255,17 +257,19 @@ echo ""
 #copy fastq files to raw data folder
 
 
+lane_idxLength=`echo $PATH_SAMPLE_SHEET  | cut -d "/" -f9 | cut -d "_" -f2,3`
+
 ####  XXXXXXXXXXX 
 #undetermined indices fastqs
 ############################
 echo "`$NOW`copying undetermined indices fastq files to $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME..."
 
 #create output directory
-mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
+mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane${ILANE}
 
 #copy files
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Undetermined_indices $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/
-chmod -R 770 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Undetermined_indices/Sample_lane${LANE}/*	 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane${ILANE}
+chmod -R 770 $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane${ILANE}
 
 echo "`$NOW`copying sample fastq files, md5 checksums and sample sheets to $PATH_RAWDATA_DIR..."
 
@@ -334,7 +338,8 @@ do
 				#get lane and read to identify the fastq file to link
 				read_number=`echo $FASTQ_FILE | cut -d'.' -f1|  tr '_' '\n' | tail -2| head -n 1 | sed 's/R//'`
 				lane=`echo $FASTQ_FILE | cut -d'.' -f1|  tr '_' '\n' | tail -3| head -n 1 | sed 's/L//'`
-				path2link=$PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane$((10#$lane))
+				#path2link=$PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices${ILANE}/Sample_lane$((10#$lane))
+				path2link=$PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane$ILANE
 				fastq_orign=`ls  $path2link | grep R${read_number}`
 				ln -s $path2link/$fastq_orign $FASTQ_NAME
 				# for TEST
@@ -391,42 +396,43 @@ echo ""
 ## adding html for lanes statistics
 #scp $PATH_TEMPLATE_HTM/index.html $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/ > /dev/null 2>&1
 
+
 #copying configuration files and stats
-echo "`$NOW`copying configuration files and stats to $PATH_RUN_DIR/lane${LANE}..."
+#echo "`$NOW`copying configuration files and stats to $PATH_RUN_DIR/lane${LANE}..."
 
 #create output directory
-mkdir -m 770 -p $PATH_RUN_DIR/lane${LANE}
+mkdir -m 770 -p $PATH_RUN_DIR/lane${lane_idxLength}
 
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexConfig.xml $PATH_RUN_DIR/lane${LANE}/
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexedBustardConfig.xml $PATH_RUN_DIR/lane${LANE}/
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexedBustardSummary.xml $PATH_RUN_DIR/lane${LANE}/
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Makefile $PATH_RUN_DIR/lane${LANE}/
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/SampleSheet.mk $PATH_RUN_DIR/lane${LANE}/
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/support.txt $PATH_RUN_DIR/lane${LANE}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexConfig.xml $PATH_RUN_DIR/lane${lane_idxLength}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexedBustardConfig.xml $PATH_RUN_DIR/lane${lane_idxLength}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/DemultiplexedBustardSummary.xml $PATH_RUN_DIR/lane${lane_idxLength}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Makefile $PATH_RUN_DIR/lane${lane_idxLength}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/SampleSheet.mk $PATH_RUN_DIR/lane${lane_idxLength}/
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/support.txt $PATH_RUN_DIR/lane${lane_idxLength}/
 
-chmod 660 $PATH_RUN_DIR/lane${LANE}/*
+chmod 660 $PATH_RUN_DIR/lane${lane_idxLength}/*
 
 echo "`$NOW`copying stats to $PATH_RESULTS_DIR..."
-mkdir -m 770 -p $PATH_RESULTS_DIR/lane${LANE}
-cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_* $PATH_RESULTS_DIR/lane${LANE}/
-chmod 770 $PATH_RESULTS_DIR/lane${LANE}/Basecall_Stats_*
+mkdir -m 770 -p $PATH_RESULTS_DIR/lane${lane_idxLength}
+cp -v -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_* $PATH_RESULTS_DIR/lane${lane_idxLength}/
+chmod 770 $PATH_RESULTS_DIR/lane${lane_idxLength}/Basecall_Stats_*
 
-echo "`${NOW}`deploying stats to $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}..."
-ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $DEPLOYMENT_PATH/lane${LANE}"  > /dev/null 2>&1
+echo "`${NOW}`deploying stats to $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}..."
+ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $DEPLOYMENT_PATH/lane${lane_idxLength}"  > /dev/null 2>&1
 
-scp -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/Plots $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}/  > /dev/null 2>&1
-scp -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/css $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}/  > /dev/null 2>&1
-scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/All.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}/  > /dev/null 2>&1
-scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/IVC.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}/  > /dev/null 2>&1
-scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/Demultiplex_Stats.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${LANE}/  > /dev/null 2>&1
+scp -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/Plots $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}/  > /dev/null 2>&1
+scp -r $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/css $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}/  > /dev/null 2>&1
+scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/All.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}/  > /dev/null 2>&1
+scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/IVC.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}/  > /dev/null 2>&1
+scp $TMPDIR/$RUN_NAME/Unaligned/Basecall_Stats_*/Demultiplex_Stats.htm $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/lane${lane_idxLength}/  > /dev/null 2>&1
 
-ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/lane${LANE}/Plots" > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/lane${LANE}/css" > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${LANE}/Plots/*"  > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${LANE}/css/*"  > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${LANE}/All.htm"  > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${LANE}/IVC.htm"  > /dev/null 2>&1
-ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${LANE}/Demultiplex_Stats.htm"  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/lane${lane_idxLength}/Plots" > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/lane${lane_idxLength}/css" > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${lane_idxLength}/Plots/*"  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${lane_idxLength}/css/*"  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${lane_idxLength}/All.htm"  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${lane_idxLength}/IVC.htm"  > /dev/null 2>&1
+ssh $DEPLOYMENT_SERVER "chmod 664 $DEPLOYMENT_PATH/lane${lane_idxLength}/Demultiplex_Stats.htm"  > /dev/null 2>&1
 
 
 #debugging

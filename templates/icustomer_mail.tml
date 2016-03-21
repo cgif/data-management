@@ -13,7 +13,7 @@ http://eliot.med.ic.ac.uk:8080/idrop-web
 
 Follow this path
 
-#projectName/bam/#projectRunDate/#projectRunDate.tar.gz
+#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
 
 You have to use your College's username and password and Authentication Type PAM
 
@@ -28,7 +28,7 @@ You can download your data via a web browser or via the icommand client on cx1 c
 	{
 		"irods_host": "eliot.med.ic.ac.uk",
 		"irods_port":1247,
-		"irods_default_resource": "eliotResc",
+		"irods_default_resource": "woolfResc",
 		"irods_user_name": "#customerUsername",
 		"irods_zone_name": "igfZone",
 		"irods_ssl_ca_certificate_file": "/apps/irods/certs/igf-chain.pem",
@@ -44,12 +44,19 @@ You can download your data via a web browser or via the icommand client on cx1 c
 + Download your data:
 	- connect to cx1
 	- module load irods/4.2.0
-	- iget /igfZone/home/#customerUsername/#projectName/bam/#projectRunDate/#projectRunDate.tar.gz
+	- iget /igfZone/home/#customerUsername/#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
 
 
 The data will be available for one month from the date of this e-mail.
 
 Please refer to the sample sheet extracts in the sample folders for facility sample ID to user sample name mappings.
+
+You can check the report of some quality control checks on raw sequence data coming from high throughput sequencing pipelines performed by FastQC tool.
+
+http://eliot.med.ic.ac.uk/report/project/#projectName/fastqc/#projectRunDate
+
+You have to use your College's username and password
+
 
 Kind regards
 

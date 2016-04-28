@@ -319,8 +319,10 @@ do
 		#change to sample directory
 		cd $SAMPLE_DIR_PATH
 			
+		#this file contains the sample under the threshold of reads
+		echo "" > $PATH_SAMPLE_SHEET.discard
 		#for each fastq file...
-		for FASTQ_FILE in `ls --color=never *.fastq*`
+		for FASTQ_FILE in `ls --color=never *.fastq*.gz`
 		do
 
 			#...make fastq output file name
@@ -353,6 +355,21 @@ do
 			
 			echo -n "`$NOW`checking fastq integrity..."
 			gzip -t $FASTQ_NAME
+
+
+			#XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   
+			echo "`$NOW` counting number of reads for ... $FASTQ_NAME:$num_reads "	
+			num_reads=`gunzip -c  $FASTQ_NAME| awk 'NR == 1 || (NR-1) % 4 == 0' | wc -l`
+			sample_row=`grep ",$LANE,$SAMPLE_NAME" $PATH_SAMPLE_SHEET`	
+			expected_num_reads=`echo $sample_row  | cut -d "," -f4 | cut -d ":" -f5 | perl -pe 's/\s//g'`
+			echo "`$NOW` expected number of reads for lane $LANE and $SAMPLE_NAME. $FASTQ_NAME:$expected_num_reads "
+			if [ "$num_reads" -ge "$expected_num_reads" ]; then
+				echo "$SAMPLE_NAME OK"
+
+			else
+				echo $num_reads$sample_row >> $PATH_SAMPLE_SHEET.discard
+				echo "$SAMPLE_NAME KO"
+			fi
 			
 			echo "`$NOW`generating md5 checksum..."
 			#generate md5 sum

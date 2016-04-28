@@ -140,7 +140,20 @@ sed -i -e "s/#customerUsername/$customer_username/" $RUN_DIR_BCL2FASTQ/$customer
 sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
-#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
+
+disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
+if [ "$disseminate" -eq 0 ]; then
+	sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
+	#echo "SEND_EMAIL"
+else
+	discard_mail=discard_mail_$SEQ_RUN_NAME.$PROJECT_TAG
+	cp $MAIL_TEMPLATE_PATH/discard_mail.tml $RUN_DIR_BCL2FASTQ/$discard_mail	
+	echo "SEQUENCE RUN NAME $SEQ_RUN_NAME" >>  $RUN_DIR_BCL2FASTQ/$discard_mail
+	echo "PROJECT NAME  $PROJECT_TAG" >>  $RUN_DIR_BCL2FASTQ/$discard_mail
+	`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard >> $RUN_DIR_BCL2FASTQ/$discard_mail`
+	sendmail -t < $RUN_DIR_BCL2FASTQ/$discard_mail 
+	#echo "NO SEND_EMAIL"
+fi
 #now remove 
 #rm $RUN_DIR_BCL2FASTQ/$customer_mail
 #sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv

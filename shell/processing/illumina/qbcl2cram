@@ -975,14 +975,13 @@ do
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	done;
+	sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 done
 
 cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_REFORMATTED
 
-
 # DEPLOYS FASTQ ON IRODSNE}
 submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
-
 
 # FASTQC RUNS
 #############
@@ -992,5 +991,5 @@ submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
 # MAPPING RUNS
 ##############
-submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
+#submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
 

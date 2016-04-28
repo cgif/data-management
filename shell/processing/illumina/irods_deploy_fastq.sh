@@ -140,7 +140,7 @@ sed -i -e "s/#customerUsername/$customer_username/" $RUN_DIR_BCL2FASTQ/$customer
 sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
-sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
+#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 #now remove 
 #rm $RUN_DIR_BCL2FASTQ/$customer_mail
 #sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv

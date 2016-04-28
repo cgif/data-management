@@ -206,7 +206,7 @@ function submitIrodsDeployFastq {
 		 
 		
 		#create the appropriate index forlane statistics
-		cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
+		#cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 
                 for project_file in `ls --color=never $PATH_RUN_DIR_BCL2FASTQ | grep .prj`
                 do
@@ -221,7 +221,7 @@ function submitIrodsDeployFastq {
                                 #echo "# File project "$lane"#"
                                 while read jobListRow
                                 do
-                                        local jobListLane=`echo $jobListRow | cut -f1 -d ',' | perl -pe 's/\s//g'`
+                                        local jobListLane=`echo $jobListRow | cut -f1 -d ',' | cut -f1 -d '_' | perl -pe 's/\s//g'`
 					# for TEST
                                         #echo "# Job List -"$jobListLane"-#"
                                         if [ "$jobListLane" -ne "$lane" ]
@@ -238,7 +238,7 @@ function submitIrodsDeployFastq {
                                 done <$BCL2FASTQ_JOB_ID_LIST
 				# for TEST
                                 #echo $tarresults_job_dependency
-				sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
+				#sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
                         done
 
                         #########################################
@@ -471,6 +471,22 @@ function submitfastqcJobs {
 		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
 		echo "`$NOW`Job ID:$job_id"
 
+
+		#prepare the email to igf fastQC report generated for project
+		fastqc_mail=$PATH_RUN_DIR_BCL2FASTQ/fastqc_mail.$project
+		cp $TEMPLATE_PATH/fastqc_mail.tml $fastqc_mail
+		chmod 770 $fastqc_mail
+		sed -i -e "s/#projectName/$project/" $fastqc_mail
+		sed -i -e "s/#projectRunDate/$SEQRUN_DATE/g" $fastqc_mail
+
+		#send the email
+		local send_fastQC_email_path=$PATH_RUN_DIR_BCL2FASTQ/send_fastqc_email.$project.sh
+		local log_fastQC_mail=`echo $send_fastQC_email_path | perl -pe 's/\.sh/\.log/g'`
+                cp $FASTQC_SCRIPT_DIR/send_fastqc_email.sh $send_fastQC_email_path
+                chmod 770 $send_fastQC_email_path
+		sed -i -e "s/#mailPath/${fastqc_mail//\//\\/}/" $send_fastQC_email_path
+		job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_fastQC_mail -j oe $send_fastQC_email_path`
+		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_fastQC_mail -j oe $send_fastQC_email_path"
 	done
 
 	#submit FastQC jobs for unassigned reads
@@ -681,7 +697,8 @@ function submitBWAMEMJobs {
                 local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
 		while read row
 		do
-			local lane=`echo $row | cut -f1 -d ','`
+			local lane=`echo $row | cut -f1 -d ','| cut -f1 -d'_'`
+
 
                        	if [ "$sample_lane" -ne "$lane" ]
                        	then
@@ -776,11 +793,11 @@ function submitTOPHATJobs {
                 then
                 	continue
                 fi
-                local sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+                local sample_lane=`echo $line | cut -f2 -d ','|cut -f1 -d'_' | perl -pe 's/\s//g'`
  		while read row
  		do
- 			local lane=`echo $row | cut -f1 -d ','`
- 
+ 			local lane=`echo $row | cut -f1 -d ','|cut -f1 -d'_'`
+
                       	if [ "$sample_lane" -ne "$lane" ]
                         then
                             continue
@@ -814,7 +831,7 @@ function submitTOPHATJobs {
         sed -i -e "s/#mseqRunName/$SEQRUN_NAME/" $script_path
         sed -i -e "s/#mprojectTag/$project/" $script_path
         sed -i -e "s/#TophatScriptDir/${TOPHAT_SCRIPTS_DIR//\//\\/}/" $script_path
-        sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $script_path
+        sed -i -e "s/#sdeploymentServer/$DEPLOYMENT_SERVER/" $script_path
         sed -i -e "s/#deploymentBaseDir/${DEPLOYMENT_BASE_DIR//\//\\/}/" $script_path
         sed -i -e "s/#queue/$QUEUE/" $script_path
         sed -i -e "s/#inputSeqrunDir/${INPUT_SEQRUN_DIR//\//\\/}/" $script_path
@@ -826,8 +843,8 @@ function submitTOPHATJobs {
         echo -n "`$NOW`" >> $SETUP_LOG
         echo "`$NOW`dependencies $mapping_dependencies" >> $SETUP_LOG
 
-        echo "qsub -W depend=afterok:$mapping_dependencies -o $log_path $script_path"
-        local job_id=`qsub -W depend=$mapping_dependencies -o $log_path $script_path`
+        echo "qsub -W depend=afterok:$mapping_dependencies -o $log_path -j oe $script_path"
+        local job_id=`qsub -W depend=$mapping_dependencies -o $log_path -j oe $script_path`
         echo $job_id >> $SETUP_LOG
 }
 						
@@ -955,7 +972,7 @@ do
 	do
 		lane_idx_length=`echo $SampleSheet | cut -d "/" -f9 | cut -d "_" -f2,3`
 		mylane=`echo $lane_idx_length | cut -d "_" -f1`
-		sed -i '10 a <br> <li> LANE '${mylane}' <ul> <li><a href=lane'${lane_idx_length}'/All.htm>All</a></li> <li><a href=lane'${lane_idx_length}'/Demultiplex_Stats.htm>Demultiplex_Stats</a></li> <li><a href=lane'${lane_idx_length}'/IVC.htm>IVC</a></li> </ul> </li>'  $PATH_RUN_DIR_BCL2FASTQ/index.html
+		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	done;
 done
@@ -971,9 +988,9 @@ submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 #############
 submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
-exit 0
+#exit 0
 
 # MAPPING RUNS
 ##############
-#submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
+submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
 

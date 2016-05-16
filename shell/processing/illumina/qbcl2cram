@@ -73,10 +73,12 @@ BWA_VERSION=0.7.5a
 
 IRODS_DEPLOYMENT="F"
 
-while getopts "i:m:dh" option; do
+####### Added parameter -t to specify if we are using IRODS
+while getopts "i:m:t:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
 	d) IRODS_DEPLOYMENT="T";;				
+	t) USE_IRODS="$OPTARG";;
 	h) cat "$USAGE"; exit 0;;
 	[?]) cat "$USAGE"; exit 1;;
 esac
@@ -259,6 +261,8 @@ function submitIrodsDeployFastq {
                         sed -i -e "s/#projectTag/$project_tag/" $deploy_irods_fastq_script
                         sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $deploy_irods_fastq_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
+			####### specify if we are using IRODS
+                        sed -i -e "s/#useIrods/$USE_IRODS/" $deploy_irods_fastq_script
 
 			#submit job 
 			local log_output_path=`echo $deploy_irods_fastq_script | perl -pe 's/\.sh/\.log/g'`
@@ -470,7 +474,27 @@ function submitfastqcJobs {
 		job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
 		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
 		echo "`$NOW`Job ID:$job_id"
+		
+		########################## XXXXXX ##########################
+		#               configure MultiQC script                   #
+		########################## XXXXXX ##########################
+		local multiqc_path=$ms_runs_dir/multiqc.$SEQRUN_NAME.sh
+                cp $FASTQC_SCRIPT_DIR/multiqc.sh $multiqc_path
+                chmod 770 $multiqc_path
 
+		#configure multiqc script, it will be executed from fastqc script
+                sed -i -e "s/#pathReadsFastq/${path_fastq_dir//\//\\/}/" $multiqc_path
+                sed -i -e "s/#pathReportsDir/${project_results_dir//\//\\/}/" $multiqc_path
+                sed -i -e "s/#pathRunsDir/${project_runs_dir//\//\\/}/" $multiqc_path
+                sed -i -e "s/#pathMSReportsDir/${ms_results_dir//\//\\/}/" $multiqc_path
+                sed -i -e "s/#deploymentServer/$DEPLOYMENT_SERVER/" $multiqc_path
+                sed -i -e "s/#summaryDeployment/${fastqc_summary_deployment//\//\\/}/" $multiqc_path
+
+		#submit job 
+                local log_path=`echo $multiqc_path | perl -pe 's/\.sh/\.log/g'`
+                job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_path -j oe $multiqc_path`
+                echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_path -j oe $multiqc_path"
+                echo "`$NOW`Job ID:$job_id"
 
 		#prepare the email to igf fastQC report generated for project
 		fastqc_mail=$PATH_RUN_DIR_BCL2FASTQ/fastqc_mail.$project
@@ -632,7 +656,7 @@ function submitfastqcJobs {
 #creates job scripts
 function submitMappingJob {
 	local path_sample_sheet_reformatted=$1
-	for project_sequence_type in `cat $path_sample_sheet_reformatted  | sed 1d |  sed 's/:/,/g' | cut -d "," -f6,13 | uniq`
+	for project_sequence_type in `cat $path_sample_sheet_reformatted  | sed 1d |  sed 's/:/,/g' | cut -d "," -f6,14 | uniq`
         do
                 project=`echo $project_sequence_type | cut -d "," -f2`
                 sequence_type=`echo $project_sequence_type | cut -d "," -f1`
@@ -660,9 +684,9 @@ function submitBWAMEMJobs {
 	local project=$2
 
         #create deployment directories
-        local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY/multisample
+        local ms_analysis_dir=$DATA_VOL_IGF/runs/$project/bwa/$TODAY/multisample
         mkdir -m 770 -p $ms_analysis_dir
-	local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/bwa/$TODAY
+	local path_scripts_dir=$DATA_VOL_IGF/runs/$project/bwa/$TODAY
 	chmod 770 $path_scripts_dir
 
         SETUP_LOG=$path_scripts_dir/setup.log
@@ -715,6 +739,7 @@ function submitBWAMEMJobs {
 
 	done <$path_sample_sheet_reformatted
 
+
 	local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project
         ########################################
         #submit splitting job
@@ -759,9 +784,9 @@ function submitTOPHATJobs {
  
         #create deployment directories
  
-        local ms_analysis_dir=$DATA_VOL_IGF/analysis/$project/tophat/$TODAY/multisample
+        local ms_analysis_dir=$DATA_VOL_IGF/runs/$project/tophat/$TODAY/multisample
         mkdir -m 770 -p $ms_analysis_dir
- 	local path_scripts_dir=$DATA_VOL_IGF/analysis/$project/tophat/$TODAY
+ 	local path_scripts_dir=$DATA_VOL_IGF/runs/$project/tophat/$TODAY
  	chmod 770 $path_scripts_dir
  
         SETUP_LOG=$path_scripts_dir/setup.log
@@ -975,12 +1000,12 @@ do
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	done;
-	sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 done
+sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 
 
 cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_REFORMATTED
 
-# DEPLOYS FASTQ ON IRODSNE}
+# DEPLOYS FASTQ ON IRODS
 submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 # FASTQC RUNS

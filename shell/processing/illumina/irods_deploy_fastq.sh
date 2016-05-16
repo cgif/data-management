@@ -19,6 +19,11 @@ NOW="date +%Y-%m-%d%t%T%t"
 #today
 TODAY=`date +%Y-%m-%d`
 
+############################ XXXXXXXXXXXXXX
+DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
+DEPLOYMENT_BASE_DIR=/www/html/report/project
+DEPLOYMENT_TAR_BASE_DIR=/data/www/html/report/data
+
 #set up script
 PATH_PROJECT_TAG_DIR=#pathProjectTagDir
 SEQ_RUN_DATE=#seqRunDate
@@ -28,6 +33,7 @@ CUSTOMER_FILE_PATH=#customerFilePath
 PROJECT_TAG=#projectTag
 MAIL_TEMPLATE_PATH=#mailTemplatePath
 PATH_TO_DESTINATION=#pathToDestination
+USE_IRODS=#useIrods
 HIGHTLIGHT="iRODSUserTagging:Star"
 
 IRODS_USER=igf
@@ -82,41 +88,70 @@ if [ $retval -ne 0 ]; then
     externalUser="Y"
 fi
 
-echo "$NOW checking if user already exists ..."
-irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
-echo "$NOW irods_user $irods_user"
-# if the user has not yet been created, then we create him
-if [ "$irods_user" = "" ]
+if [ "$USE_IRODS" = "T" ]
 then
-	echo "$NOW creating user ..."
-	# make user
-	iadmin mkuser $customer_username#igfZone rodsuser
-	#external user set a password
-	if [[ $externalUser == "Y" ]]; then
-		iadmin moduser $customer_username#igfZone password $customer_passwd
+######################## if we are using IRODS 
+
+	echo "$NOW checking if user already exists ..."
+	irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
+	echo "$NOW irods_user $irods_user"
+	# if the user has not yet been created, then we create him
+	if [ "$irods_user" = "" ]
+	then
+		echo "$NOW creating user ..."
+		# make user
+		iadmin mkuser $customer_username#igfZone rodsuser
+		#external user set a password
+		if [[ $externalUser == "Y" ]]; then
+			iadmin moduser $customer_username#igfZone password $customer_passwd
+		fi
+	fi
+	ichmod own igf /igfZone/home/$customer_username
+	ichmod -r inherit /igfZone/home/$customer_username
+
+	# creates the deploy structure
+	imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+
+	ichmod own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	ichmod inherit /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	echo "$NOW attaching meta-data run_name to run_date collection ..."
+	imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
+
+	echo "$NOW storing file in irods .... checksum"
+	iput -k -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	iput -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+
+	#set expire date
+	isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
+	imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
+	imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
+
+	ichmod -r read $customer_username /igfZone/home/$customer_username/
+
+######################## END 
+else
+######################## otherwise deploy the files on eliot
+	deployment_symbolic_link=$DEPLOYMENT_BASE_DIR/$PROJECT_TAG
+	ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $deployment_symbolic_link"
+	path_2_fastq=$deployment_symbolic_link/fastq
+	#checks if in project_tag  already exists fastq directory
+	# if yes: Add new files in that directory
+	# if no: generate rnd direcory name and create fastq symbolic link to it
+	if ssh $DEPLOYMENT_SERVER "[ -d /$path_2_fastq ]";then
+		echo "`$NOW` coping TAR archive on eliot server ..."
+		scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$path_2_fastq
+	else
+		# creates rnd name for result directory
+		rnddir_results=`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-15} | head -n 1` 
+		PATH_TO_RNDDIR=$DEPLOYMENT_TAR_BASE_DIR/$rnddir_results
+		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $PATH_TO_RNDDIR" 
+	
+		echo "`$NOW` coping TAR archive on eliot server ..."
+		scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$PATH_TO_RNDDIR 
+		#create project_tag dir & symbolic link
+		ssh $DEPLOYMENT_SERVER "ln -s  $PATH_TO_RNDDIR $path_2_fastq"
 	fi
 fi
-ichmod own igf /igfZone/home/$customer_username
-ichmod -r inherit /igfZone/home/$customer_username
-
-# creates the deploy structure
-imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-
-ichmod -rM own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-ichmod -rM inherit /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-echo "$NOW attaching meta-data run_name to run_date collection ..."
-imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
-
-echo "$NOW storing file in irods .... checksum"
-iput -k -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-iput -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-
-#set expire date
-isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz '+30d'
-imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
-imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
-
-ichmod -r read $customer_username /igfZone/home/$customer_username/
 
 #now remove the tar file
 echo "`$NOW` remove tar from eliot server ..."
@@ -129,9 +164,19 @@ if [[ $customer_email != *"@"* ]]; then
 fi
 customer_mail=customer_mail.$PROJECT_TAG
 if [[ $externalUser == "Y" ]]; then
-	cp $MAIL_TEMPLATE_PATH/ecustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	if [ "$USE_IRODS" = "T" ]
+	then
+		cp $MAIL_TEMPLATE_PATH/eirodscustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	else
+		cp $MAIL_TEMPLATE_PATH/ecustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	fi
 else
-	cp $MAIL_TEMPLATE_PATH/icustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	if [ "$USE_IRODS" = "T" ]
+	then
+		cp $MAIL_TEMPLATE_PATH/iirodscustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	else
+		cp $MAIL_TEMPLATE_PATH/icustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
+	fi
 fi
 chmod 770 $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#customerEmail/$customer_email/" $RUN_DIR_BCL2FASTQ/$customer_mail
@@ -143,8 +188,8 @@ sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
 if [ "$disseminate" -eq 0 ]; then
-	sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
-	#echo "SEND_EMAIL"
+	#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
+	echo "SEND_EMAIL"
 else
 	discard_mail=discard_mail_$SEQ_RUN_NAME.$PROJECT_TAG
 	cp $MAIL_TEMPLATE_PATH/discard_mail.tml $RUN_DIR_BCL2FASTQ/$discard_mail	
@@ -152,7 +197,7 @@ else
 	echo "PROJECT NAME  $PROJECT_TAG" >>  $RUN_DIR_BCL2FASTQ/$discard_mail
 	`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard >> $RUN_DIR_BCL2FASTQ/$discard_mail`
 	sendmail -t < $RUN_DIR_BCL2FASTQ/$discard_mail 
-	#echo "NO SEND_EMAIL"
+	echo "NO SEND_EMAIL"
 fi
 #now remove 
 #rm $RUN_DIR_BCL2FASTQ/$customer_mail

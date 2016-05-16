@@ -18,6 +18,8 @@ INPUT_SEQRUN=$1
 IRODS_USER=$2
 IRODS_PWD=$3
 SSH_USER=$4
+############  Added new parameter that specify if we are using IRODS
+USE_IRODS=$5
 
 RUN_NAME=`basename $INPUT_SEQRUN`
 PATH_SEQRUNS_DIR=`dirname $INPUT_SEQRUN`
@@ -128,43 +130,55 @@ tar cvf $TRANSFER_DIR/$RUN_NAME.tar Data runParameters.xml RunInfo.xml $SAMPLE_S
 cd $TRANSFER_DIR
 md5sum $RUN_NAME.tar > $RUN_NAME.tar.md5
 
-#log into irods using iinit [password]
-#iinit $IRODS_PWD
-
-echo "`$NOW` Registering files into iRODS..."
 #give rx permissions to irods to enable registering..
 chmod o+rx $TRANSFER_DIR/$RUN_NAME.tar $TRANSFER_DIR/$RUN_NAME.tar.md5
 
-#register archive and md5 file
-#-R the resource to store to
-#-k calcualte a checksum on the iRODS client and store with the file details
-#--hash md5 - use the specified file checksum
-imkdir $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME
-ireg -k -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar
-## checks if there was an error on irods
-retval=$?
-if [ $retval -ne 0 ]; then
-    echo "`$NOW` ERROR registering run data in IRODS"
-    exit 1
-fi 
-ireg -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar.md5 $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5
-
-
-#change to original working dir
-cd $WORKING_DIR		
-
 #transfer files to cx1
-
 #create the run-specific directory where its archive will be retrieved to
 PATH_TARGET_DIR=$DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME
 echo "`$NOW` Creating target directory $PATH_TARGET_DIR on $HOST..."
 ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR
 
-#after registration, on cx1, retrieve the files into their respective directories
-#-K verify the checksum
-echo "`$NOW` Retrieving archive from iRODS..."
-#ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iinit $IRODS_PWD; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
-ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
+#log into irods using iinit [password]
+#iinit $IRODS_PWD
+######## if we are using IRODS register the new run in iRODS atherwise add the run_name into RUN_LIST file
+if [ "$USE_IRODS" = "T" ]
+then
+	echo "`$NOW` Registering files into iRODS..."
+	#register archive and md5 file
+	#-R the resource to store to
+	#-k calcualte a checksum on the iRODS client and store with the file details
+	#--hash md5 - use the specified file checksum
+	imkdir $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME
+	ireg -k -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar
+	## checks if there was an error on irods
+	retval=$?
+	if [ $retval -ne 0 ]; then
+    		echo "`$NOW` ERROR registering run data in IRODS"
+    		exit 1
+	fi 
+	ireg -R $RESOURCE $TRANSFER_DIR/$RUN_NAME.tar.md5 $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5
+	echo $RUN_NAME >> $TRANSFER_DIR/../seqrun/RUN_LIST
+else
+	echo $RUN_NAME >> $TRANSFER_DIR/../seqrun/RUN_LIST
+fi
+
+
+#change to original working dir
+cd $WORKING_DIR		
+   
+######## If we are using IRODS registers data on iRODS otherwise scp the files on cx1 directly
+if [ "$USE_IRODS" = "T" ]
+then
+	#after registration, on cx1, retrieve the files into their respective directories
+	#-K verify the checksum
+	echo "`$NOW` Retrieving archive from iRODS..."
+	#ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iinit $IRODS_PWD; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
+	ssh $SSH_USER@$HOST "source /etc/bashrc; module load irods/4.2.0; iget -K $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5 $PATH_TARGET_DIR"
+else
+	scp $TRANSFER_DIR/$RUN_NAME.tar $SSH_USER@$HOST:$PATH_TARGET_DIR
+	scp $TRANSFER_DIR/$RUN_NAME.tar.md5 $SSH_USER@$HOST:$PATH_TARGET_DIR
+fi
 
 #check the md5 checksum of the tarball
 #no longer needed as we calculate and check it with iRODS
@@ -194,17 +208,21 @@ ssh $SSH_USER@$HOST "tar xf $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME
 echo "`$NOW` Deleting tar archive and md5 file from $HOST..."
 ssh $SSH_USER@$HOST "rm $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar*"
 
-#also, delete the .tar and .md5 of that run from irods, as they are no longer necessary
-echo "`$NOW` Removing tar archive and md5 file from iRODS..."
-irm $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar
-irm $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5
+if [ "$USE_IRODS" = "T" ]
+then
+	#also, delete the .tar and .md5 of that run from irods, as they are no longer necessary
+	echo "`$NOW` Removing tar archive and md5 file from iRODS..."
+	irm $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar
+	irm $PATH_SEQRUNS_DIR_IRODS/$RUN_NAME/$RUN_NAME.tar.md5
+fi
 
 #remove local copies of tar and md5
 echo "`$NOW` Removing local copies of tar archive and md5 file..."
 rm $TRANSFER_DIR/$RUN_NAME.tar*
 
 #execute the bcl to cram script
+##### XXXXXXXXX
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d"
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d -t $USE_IRODS"
 
 

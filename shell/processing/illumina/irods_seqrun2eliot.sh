@@ -21,6 +21,9 @@
 
 
 ###
+
+USE_IRODS=$1
+
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 PATH_SEQRUNS_DIR=/home/igf/seqrun/illumina
 NOW="date +%Y-%m-%d%t%T%t"
@@ -43,12 +46,16 @@ IRODS_RUNS=`ils | awk 'NR>1 {print $2}' | cut -f5 -d/`		#NR>1 is used to skip th
 #NR>1 is used to skip the line in irods_ils that shows the collection name/title
 #echo "`$NOW` getting runs already registered in iRODS..."
 
-REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
-## checks if there was an error on irods
-retval=$?
-if [ $retval -ne 0 ]; then
-    echo "`$NOW` ERROR reading registered runs in IRODS"
-    exit 1
+if [ "$USE_IRODS" = "T" ]
+then
+	REGISTERED_RUNS=`ils seqrun/illumina | awk 'NR>1 {print $2}' | cut -f7 -d/`		
+	## checks if there was an error on irods
+	if [ "$REGISTERED_RUNS" = "" ]; then
+    		echo "`$NOW` ERROR reading registered runs in IRODS"
+    	exit 1
+	fi
+else
+	REGISTERED_RUNS=`cat $PATH_SEQRUNS_DIR/../RUN_LIST`
 fi
 
 
@@ -99,8 +106,8 @@ else
 			
 				#... and start run processing
 				echo "`$NOW` Run $RUN complete. Starting processing..."
-				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER"
-				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER
+				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS"
+				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS
 	
 			fi
 		fi

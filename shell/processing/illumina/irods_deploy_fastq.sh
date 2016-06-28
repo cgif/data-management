@@ -38,10 +38,11 @@ HIGHTLIGHT="iRODSUserTagging:Star"
 
 IRODS_USER=igf
 IRODS_PWD=igf
+SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../../../..
 
 #ADDING FASTQ FILES TO WOOLF(woolfResc)
 module load irods/4.2.0
-#iinit igf
+iinit igf
 
 echo "`$NOW` genereting global SampleSheet for the project ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; cat $SEQ_RUN_DATE/*/SampleSheet.* | grep -v FCID > $SEQ_RUN_DATE/SampleSheet.csv"	
@@ -90,7 +91,7 @@ fi
 
 if [ "$USE_IRODS" = "T" ]
 then
-######################## if we are using IRODS 
+######################## XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 	echo "$NOW checking if user already exists ..."
 	irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
@@ -102,18 +103,18 @@ then
 		# make user
 		iadmin mkuser $customer_username#igfZone rodsuser
 		#external user set a password
-		if [[ $externalUser == "Y" ]]; then
+		if [ "$externalUser" = "Y" ]; then
 			iadmin moduser $customer_username#igfZone password $customer_passwd
 		fi
 	fi
-	ichmod own igf /igfZone/home/$customer_username
+	ichmod -M own igf /igfZone/home/$customer_username
 	ichmod -r inherit /igfZone/home/$customer_username
 
 	# creates the deploy structure
 	imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
-	ichmod own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-	ichmod inherit /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	ichmod -M own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	ichmod -r inherit /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 	echo "$NOW attaching meta-data run_name to run_date collection ..."
 	imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
 
@@ -128,9 +129,8 @@ then
 
 	ichmod -r read $customer_username /igfZone/home/$customer_username/
 
-######################## END 
+######################## END XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 else
-######################## otherwise deploy the files on eliot
 	deployment_symbolic_link=$DEPLOYMENT_BASE_DIR/$PROJECT_TAG
 	ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $deployment_symbolic_link"
 	path_2_fastq=$deployment_symbolic_link/fastq
@@ -185,6 +185,25 @@ sed -i -e "s/#customerUsername/$customer_username/" $RUN_DIR_BCL2FASTQ/$customer
 sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
+
+local customer_email=$RUN_DIR_BCL2FASTQ/$customer_mail
+local send_email_script=$PATH_RUN_DIR_BCL2FASTQ/send_email.${project_tag}.sh
+cp $SEND_EMAIL_SCRIPT $send_email_script
+chmod 770 $send_email_script
+
+sed -i -e "s/#customerEmail/${customer_email//\//\\/}/" $send_email_script
+local log_output_path=`echo $send_email_script | perl -pe 's/\.sh/\.log/g'`
+echo -n "" > $log_output_path
+echo -n "`$NOW`submitting send email to the customer job: " 
+echo "$send_email_script"
+
+local job_id=null
+#job_id=`qsub -q $QUEUE -o $log_output_path -j oe $send_email_script`
+echo "qsub -q $QUEUE -o $log_output_path -j oe $send_email_script"
+echo "`$NOW`Job ID:$job_id"
+chmod 660 $log_output_path
+
+
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
 if [ "$disseminate" -eq 0 ]; then

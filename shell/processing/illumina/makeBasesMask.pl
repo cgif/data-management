@@ -129,7 +129,9 @@ while(<IN>){
 			if($index_idx != -1 && $tokens[$index_idx] ne ""){
 				
 				my $seq=$tokens[$index_idx];
-				my ($idx1, $idx2) = split('-',$seq);
+				my $idx1="";
+				my $idx2="";
+				($idx1, $idx2) = split('-',$seq);
 				my $length=length($idx1);
 				$lengths_idx1{$length}="";
 			#print " +++++++++++++++++++++++++++++++++ IDX1 $idx1\n";

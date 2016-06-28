@@ -72,8 +72,9 @@ BWA_VERSION=0.7.5a
 ##################
 
 IRODS_DEPLOYMENT="F"
+USE_IRODS="T"
 
-####### Added parameter -t to specify if we are using IRODS
+####### XXXXXXXXXXX
 while getopts "i:m:t:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
@@ -261,7 +262,7 @@ function submitIrodsDeployFastq {
                         sed -i -e "s/#projectTag/$project_tag/" $deploy_irods_fastq_script
                         sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $deploy_irods_fastq_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
-			####### specify if we are using IRODS
+####### XXXXXXXXXXX
                         sed -i -e "s/#useIrods/$USE_IRODS/" $deploy_irods_fastq_script
 
 			#submit job 
@@ -1005,7 +1006,7 @@ sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html
 
 cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_REFORMATTED
 
-# DEPLOYS FASTQ ON IRODS
+# DEPLOYS FASTQ ON IRODSNE}
 submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 # FASTQC RUNS

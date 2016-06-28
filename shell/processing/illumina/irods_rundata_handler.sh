@@ -18,7 +18,7 @@ INPUT_SEQRUN=$1
 IRODS_USER=$2
 IRODS_PWD=$3
 SSH_USER=$4
-############  Added new parameter that specify if we are using IRODS
+############   XXXXXXXXXXXXXXX #################
 USE_IRODS=$5
 
 RUN_NAME=`basename $INPUT_SEQRUN`
@@ -141,7 +141,7 @@ ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR
 
 #log into irods using iinit [password]
 #iinit $IRODS_PWD
-######## if we are using IRODS register the new run in iRODS atherwise add the run_name into RUN_LIST file
+######## XXXXXXXXX
 if [ "$USE_IRODS" = "T" ]
 then
 	echo "`$NOW` Registering files into iRODS..."
@@ -167,7 +167,7 @@ fi
 #change to original working dir
 cd $WORKING_DIR		
    
-######## If we are using IRODS registers data on iRODS otherwise scp the files on cx1 directly
+######## XXXXXXXXX
 if [ "$USE_IRODS" = "T" ]
 then
 	#after registration, on cx1, retrieve the files into their respective directories

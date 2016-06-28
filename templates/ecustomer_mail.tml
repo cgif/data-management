@@ -9,25 +9,23 @@ Dear #customerName,
 
 Your sequencing data is available for download from:
 
-http://eliot.med.ic.ac.uk:8080/idrop-web
+http://eliot.med.ic.ac.uk/report/project/#projectName/fastq
 
-Follow this path
+username:#customerUsername
+password:#passwd
 
-#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
+You can download your data via a web browser or via the command line using:
 
-User Name: #customerUsername
-Password: #passwd
-Authentication Type: Standard
-
+wget --user #customerUsername --password #passwd http://eliot.med.ic.ac.uk/report/project/#projectName/fastq/#projectRunDate.tar.gz
 
 The data will be available for one month from the date of this e-mail.
 
 Please refer to the sample sheet extracts in the sample folders for facility sample ID to user sample name mappings.
 
-http://eliot.med.ic.ac.uk/report/project/#projectName/fastqc/#projectRunDate
 
-User Name: #customerUsername
-Password: #passwd
+You can check the FastQC report from:
+
+http://eliot.med.ic.ac.uk/report/project/#projectName/fastqc/#projectRunDate
 
 
 Kind regards

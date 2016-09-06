@@ -65,6 +65,10 @@ BCL2FASTQ_VERSION=1.8.4
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 
+#SERP
+SERP_SCRIPT=$BASEDIR/serp.pl
+SERP_DEPENDENCIES="afterany"
+
 #SPLIT_SCRIPT
 #SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
 
@@ -277,6 +281,7 @@ function submitIrodsDeployFastq {
 			echo "qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $deploy_irods_fastq_script"
 			echo "`$NOW`Job ID:$job_id"
 			chmod 660 $log_output_path
+			SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id
 		done
 
 }
@@ -475,7 +480,8 @@ function submitfastqcJobs {
 		job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
 		echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
 		echo "`$NOW`Job ID:$job_id"
-		
+		SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id		
+
 		########################## XXXXXX ##########################
 		#               configure MultiQC script                   #
 		########################## XXXXXX ##########################
@@ -651,6 +657,7 @@ function submitfastqcJobs {
 	job_id=`qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
 	echo "qsub -q $QUEUE -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path"
 	echo "`$NOW`Job ID:$job_id"
+	SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id
 
 }
 
@@ -723,7 +730,6 @@ function submitBWAMEMJobs {
 		while read row
 		do
 			local lane=`echo $row | cut -f1 -d ','| cut -f1 -d'_'`
-
 
                        	if [ "$sample_lane" -ne "$lane" ]
                        	then
@@ -882,6 +888,7 @@ FLOWCELL_ID=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($pr
 
 CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
 
+
 #DEPLOYMENT STRUCTURE
 #creates deployment results structure on eliot webserver
 while read row
@@ -967,7 +974,8 @@ mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN
 ### get sequencing type for following mapping
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
-sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+sed -i 's/\([A|C|G|T]*\)N*\(-*\)\([A|C|G|T]\+\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+#sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
 sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 #create the appropriate index for lane statistics
@@ -1006,7 +1014,7 @@ sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html
 
 cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_REFORMATTED
 
-# DEPLOYS FASTQ ON IRODSNE}
+# DEPLOYS FASTQ ON IRODS
 submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 # FASTQC RUNS
@@ -1014,6 +1022,7 @@ submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
 #exit 0
+
 
 # MAPPING RUNS
 ##############

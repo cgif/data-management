@@ -38,7 +38,7 @@ HIGHTLIGHT="iRODSUserTagging:Star"
 
 IRODS_USER=igf
 IRODS_PWD=igf
-SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../../../..
+SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_email.sh
 
 #ADDING FASTQ FILES TO WOOLF(woolfResc)
 module load irods/4.2.0
@@ -186,26 +186,27 @@ sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
 sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
 
-local customer_email=$RUN_DIR_BCL2FASTQ/$customer_mail
-local send_email_script=$PATH_RUN_DIR_BCL2FASTQ/send_email.${project_tag}.sh
+customer_email=$RUN_DIR_BCL2FASTQ/$customer_mail
+send_email_script=$RUN_DIR_BCL2FASTQ/send_email.${PROJECT_TAG}.sh
 cp $SEND_EMAIL_SCRIPT $send_email_script
 chmod 770 $send_email_script
 
 sed -i -e "s/#customerEmail/${customer_email//\//\\/}/" $send_email_script
-local log_output_path=`echo $send_email_script | perl -pe 's/\.sh/\.log/g'`
+log_output_path=`echo $send_email_script | perl -pe 's/\.sh/\.log/g'`
 echo -n "" > $log_output_path
 echo -n "`$NOW`submitting send email to the customer job: " 
 echo "$send_email_script"
 
-local job_id=null
-#job_id=`qsub -q $QUEUE -o $log_output_path -j oe $send_email_script`
-echo "qsub -q $QUEUE -o $log_output_path -j oe $send_email_script"
+job_id=null
+job_id=`qsub -o $log_output_path -j oe $send_email_script`
+echo "qsub -o $log_output_path -j oe $send_email_script"
 echo "`$NOW`Job ID:$job_id"
 chmod 660 $log_output_path
 
 
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
+#disseminate=0
 if [ "$disseminate" -eq 0 ]; then
 	#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 	echo "SEND_EMAIL"

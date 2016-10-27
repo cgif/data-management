@@ -348,7 +348,8 @@ function submitfastqcJobs {
 		local lane=`echo $row | cut -f1 -d ',' | cut -d "_" -f1`
 
 		local bcl2fastq_job_id=`echo $row | cut -f2 -d ','`
-		
+
+		local number_samples_x_lane=`cat $path_sample_sheet_reformatted | grep ^,$lane | wc -l`
 			
 		local rowcount=0
 		while read line
@@ -413,6 +414,7 @@ function submitfastqcJobs {
 			sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $fastQC_script_path	
   			sed -i -e "s/#deploymentPath/${fastqc_deployment_path//\//\\/}/" $fastQC_script_path	
 			sed -i -e "s/#summaryPath/${fastqc_summary_deployment//\//\\/}/" $fastQC_script_path
+			sed -i -e "s/#numberSamplesXLane/$number_samples_x_lane/" $fastQC_script_path
 
 		  	#submit job 
 		  	log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
@@ -582,6 +584,7 @@ function submitfastqcJobs {
 		sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $fastQC_script_path	
 		sed -i -e "s/#deploymentPath/${fastqc_deployment_path//\//\\/}/" $fastQC_script_path	
 		sed -i -e "s/#summaryPath/${fastqc_summary_deployment//\//\\/}/" $fastQC_script_path
+		sed -i -e "s/#numberSamplesXLane/$number_samples_x_lane/" $fastQC_script_path
 
 	  	#submit job 
 	  	log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
@@ -879,6 +882,41 @@ function submitTOPHATJobs {
         local job_id=`qsub -W depend=$mapping_dependencies -o $log_path -j oe $script_path`
         echo $job_id >> $SETUP_LOG
 }
+
+
+
+#popolate Database with data of the RUN
+function popolateDB {
+
+	SETUP_LOG=$PATH_RUN_DIR_BCL2FASTQ/setup.log
+	local single_read='T'
+
+	echo " popolate DB ${SERP_DEPENDENCIES}"
+ 	local script_path=$PATH_RUN_DIR_BCL2FASTQ/serp.$SEQRUN_NAME.pl
+        cp ${SERP_SCRIPT} $script_path
+        chmod 770 $script_path
+
+	echo "TEST PIRED END $pairedEnd"
+ 	if [ $pairedEnd -eq 1 ]
+ 	then
+		single_read='F'
+	fi
+
+        sed -i -e "s/#runDate/$TODAY/" $script_path
+        sed -i -e "s/#inputSeqRun/$SEQRUN_NAME/" $script_path
+        sed -i -e "s/#singleRead/$single_read/" $script_path
+
+        local log_path=`echo $script_path | perl -pe 's/\.pl/\.log/g'`
+
+        echo "`$NOW`popolating database job:" >> $SETUP_LOG
+        echo "`$NOW`serp.$project.pl" >> $SETUP_LOG
+        echo -n "`$NOW`" >> $SETUP_LOG
+        echo "`$NOW`dependencies ${SERP_DEPENDENCIES}" >> $SETUP_LOG
+
+        echo "qsub -W depend=${SERP_DEPENDENCIES} -o $log_path -j oe $script_path"
+        local job_id=`qsub -W depend=${SERP_DEPENDENCIES} -o $log_path -j oe $script_path`
+        echo $job_id >> $SETUP_LOG
+}
 						
 #get run name, run date and flow cell ID
 
@@ -961,7 +999,7 @@ echo -n "" > $BCL2FASTQ_JOB_ID_LIST
 LANES=`cut -f1 -d ',' $INPUT_SEQRUN_DIR/SampleSheet.csv | perl -e 'while(<>){ if(/\[Data\]/){ $_=<>; if(/^Lane/){ while(<>){ print; }} else { print "1\n"; } }}' | sort | uniq`
 
 #parse sample sheet into format compatible with bcl2fastq format
-#in case the sample sheet has been processed on Windows...
+#in case the sample sheet has been processed on Windows.. .
 dos2unix $INPUT_SEQRUN_DIR/SampleSheet.csv
 #convert sample sheet
 PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
@@ -971,11 +1009,13 @@ $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTE
 #remove second no index (it effects only mixed indexes run)
 mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
 #echo "mixedIndexLanes= $mixedIndexLanes"
+#reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
+pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
 ### get sequencing type for following mapping
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
-sed -i 's/\([A|C|G|T]*\)N*\(-*\)\([A|C|G|T]\+\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
-#sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+#sed -i 's/\([A|C|G|T]*\)N*\(-*\)\([A|C|G|T]\+\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
 sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 #create the appropriate index for lane statistics
@@ -1022,6 +1062,7 @@ submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
 #exit 0
+popolateDB
 
 
 # MAPPING RUNS

@@ -11,3 +11,5 @@ DESCRIPTION
 		
     -d  If specified, CRAM files are deployed to iRODS on Eliot.
 
+    -t if T iRODS is used F the files will be deployed on Eliot
+

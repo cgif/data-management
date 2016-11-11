@@ -39,6 +39,7 @@ HIGHTLIGHT="iRODSUserTagging:Star"
 IRODS_USER=igf
 IRODS_PWD=igf
 SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_email.sh
+SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_notification.sh
 
 #ADDING FASTQ FILES TO WOOLF(woolfResc)
 module load irods/4.2.0
@@ -119,7 +120,15 @@ then
 	imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
 
 	echo "$NOW storing file in irods .... checksum"
-	iput -k -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	iput -k -fP -N 4 -X $PATH_TO_DESTINATION/restartFile.$PROJECT_TAG --retries 3 -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+	retval=$?
+        if [ $retval -ne 0 ]; then
+                echo "`$NOW` ERROR registering sequencing data in IRODS"
+		echo -e "subject:Sequencing Data for project $PROJECT_TAG Processing Error. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+
+                exit 1
+        fi
+
 	iput -fP -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
 	#set expire date
@@ -127,7 +136,7 @@ then
 	imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
 	imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/$SEQ_RUN_DATE.tar.gz retention "30" "days"
 
-	ichmod -r read $customer_username /igfZone/home/$customer_username/
+#	ichmod -r read $customer_username /igfZone/home/$customer_username/
 
 ######################## END XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 else
@@ -162,6 +171,7 @@ if [[ $customer_email != *"@"* ]]; then
 	#send email alert...
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 fi
+#Prepare the email to send to the customer
 customer_mail=customer_mail.$PROJECT_TAG
 if [[ $externalUser == "Y" ]]; then
 	if [ "$USE_IRODS" = "T" ]
@@ -192,17 +202,39 @@ cp $SEND_EMAIL_SCRIPT $send_email_script
 chmod 770 $send_email_script
 
 sed -i -e "s/#customerEmail/${customer_email//\//\\/}/" $send_email_script
+sed -i -e "s/#customerUsername/$customer_username/" $send_email_script
 log_output_path=`echo $send_email_script | perl -pe 's/\.sh/\.log/g'`
 echo -n "" > $log_output_path
 echo -n "`$NOW`submitting send email to the customer job: " 
 echo "$send_email_script"
 
-job_id=null
-job_id=`qsub -o $log_output_path -j oe $send_email_script`
-echo "qsub -o $log_output_path -j oe $send_email_script"
-echo "`$NOW`Job ID:$job_id"
-chmod 660 $log_output_path
+#Prepare the email to send to Lab head & IGF to notify that new data are ready
+notification_mail=$RUN_DIR_BCL2FASTQ/notification_mail.$PROJECT_TAG
+send_notification_script=$RUN_DIR_BCL2FASTQ/send_notification.${PROJECT_TAG}.sh
+cp $SEND_NOTIFICATION_SCRIPT  $send_notification_script
+sed -i -e "s/#notificationEmail/${notification_mail//\//\\/}/" $send_notification_script
+log_notification_path=`echo $send_notification_script | perl -pe 's/\.sh/\.log/g'`
+chmod 770 $send_notification_script
 
+cp $MAIL_TEMPLATE_PATH/notification_dissemination_mail.tml $notification_mail
+chmod 770 $RUN_DIR_BCL2FASTQ/$notification_mail
+sed -i -e "s/#projectName/$PROJECT_TAG/" $notification_mail
+sed -i -e "s/#sendEmailScript/${send_email_script//\//\\/}/" $notification_mail
+
+#send to Lab head & IGF to notify that new data are ready
+job_id=null
+job_id=`qsub -o $log_notification_path -j oe $send_notification_script`
+echo "qsub -o $log_notification_path -j oe $send_notification_script"
+echo "`$NOW`Job ID:$job_id"
+chmod 660 $log_notification_path
+
+#Before to send the email to the customer the invoice has to be paid!!!
+#send to the customer
+#job_id=null
+#job_id=`qsub -o $log_output_path -j oe $send_email_script`
+#echo "qsub -o $log_output_path -j oe $email_script"
+#echo "`$NOW`Job ID:$job_id"
+#chmod 660 $log_output_path
 
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
@@ -211,6 +243,7 @@ if [ "$disseminate" -eq 0 ]; then
 	#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 	echo "SEND_EMAIL"
 else
+	# Prepare and send email with reads under the threshold
 	discard_mail=discard_mail_$SEQ_RUN_NAME.$PROJECT_TAG
 	cp $MAIL_TEMPLATE_PATH/discard_mail.tml $RUN_DIR_BCL2FASTQ/$discard_mail	
 	echo "SEQUENCE RUN NAME $SEQ_RUN_NAME" >>  $RUN_DIR_BCL2FASTQ/$discard_mail

@@ -209,32 +209,32 @@ echo -n "`$NOW`submitting send email to the customer job: "
 echo "$send_email_script"
 
 #Prepare the email to send to Lab head & IGF to notify that new data are ready
-notification_mail=$RUN_DIR_BCL2FASTQ/notification_mail.$PROJECT_TAG
-send_notification_script=$RUN_DIR_BCL2FASTQ/send_notification.${PROJECT_TAG}.sh
-cp $SEND_NOTIFICATION_SCRIPT  $send_notification_script
-sed -i -e "s/#notificationEmail/${notification_mail//\//\\/}/" $send_notification_script
-log_notification_path=`echo $send_notification_script | perl -pe 's/\.sh/\.log/g'`
-chmod 770 $send_notification_script
+#notification_mail=$RUN_DIR_BCL2FASTQ/notification_mail.$PROJECT_TAG
+#send_notification_script=$RUN_DIR_BCL2FASTQ/send_notification.${PROJECT_TAG}.sh
+#cp $SEND_NOTIFICATION_SCRIPT  $send_notification_script
+#sed -i -e "s/#notificationEmail/${notification_mail//\//\\/}/" $send_notification_script
+#log_notification_path=`echo $send_notification_script | perl -pe 's/\.sh/\.log/g'`
+#chmod 770 $send_notification_script
 
-cp $MAIL_TEMPLATE_PATH/notification_dissemination_mail.tml $notification_mail
-chmod 770 $RUN_DIR_BCL2FASTQ/$notification_mail
-sed -i -e "s/#projectName/$PROJECT_TAG/" $notification_mail
-sed -i -e "s/#sendEmailScript/${send_email_script//\//\\/}/" $notification_mail
+#cp $MAIL_TEMPLATE_PATH/notification_dissemination_mail.tml $notification_mail
+#chmod 770 $RUN_DIR_BCL2FASTQ/$notification_mail
+#sed -i -e "s/#projectName/$PROJECT_TAG/" $notification_mail
+#sed -i -e "s/#sendEmailScript/${send_email_script//\//\\/}/" $notification_mail
 
 #send to Lab head & IGF to notify that new data are ready
-job_id=null
-job_id=`qsub -o $log_notification_path -j oe $send_notification_script`
-echo "qsub -o $log_notification_path -j oe $send_notification_script"
-echo "`$NOW`Job ID:$job_id"
-chmod 660 $log_notification_path
+#job_id=null
+#job_id=`qsub -o $log_notification_path -j oe $send_notification_script`
+#echo "qsub -o $log_notification_path -j oe $send_notification_script"
+#echo "`$NOW`Job ID:$job_id"
+#chmod 660 $log_notification_path
 
 #Before to send the email to the customer the invoice has to be paid!!!
 #send to the customer
-#job_id=null
-#job_id=`qsub -o $log_output_path -j oe $send_email_script`
-#echo "qsub -o $log_output_path -j oe $email_script"
+job_id=null
+job_id=`qsub -o $log_output_path -j oe $send_email_script`
+echo "qsub -o $log_output_path -j oe $send_email_script"
 #echo "`$NOW`Job ID:$job_id"
-#chmod 660 $log_output_path
+chmod 660 $log_output_path
 
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`

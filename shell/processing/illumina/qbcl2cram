@@ -142,7 +142,7 @@ function submitbcl2fastqJobs {
 	#create summary directory on deployment server
 	local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
 	ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bcl2fastq_summary_deployment"  > /dev/null 2>&1
-
+	ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME"  > /dev/null 2>&1
 	
 	echo -n $lane >> $BCL2FASTQ_JOB_ID_LIST
 
@@ -280,7 +280,6 @@ function submitIrodsDeployFastq {
 		  	job_id=`qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $deploy_irods_fastq_script`
 			echo "qsub -q $QUEUE -W depend=$tarresults_job_dependency -o $log_output_path -j oe $deploy_irods_fastq_script"
 			echo "`$NOW`Job ID:$job_id"
-			chmod 660 $log_output_path
 			SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id
 		done
 
@@ -313,16 +312,16 @@ function submitfastqcJobs {
 		#create and set permissions for run directory
 		project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
 		mkdir -m 770 -p $project_runs_dir
-		chmod -R 770 $DATA_VOL_IGF/runs/$project
 		ms_runs_dir=$project_runs_dir/multisample
 		mkdir -m 770 -p $ms_runs_dir
+		chmod -R 770 $DATA_VOL_IGF/runs/$project
 						
 		#create and set permissions for results project parent directory
 		project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
 		mkdir -m 770 -p $project_results_dir
 		# aggiunto io
-		chmod -R 770 $project_results_dir	
 		mkdir -m 770 -p $project_results_dir/multisample
+		chmod -R 770 $DATA_VOL_IGF/results/$project
 
 		local job_id_list=$ms_runs_dir/job_id_list.$SEQRUN_NAME.txt
 		echo -n "" > $job_id_list
@@ -331,6 +330,7 @@ function submitfastqcJobs {
 		#create summary directory on deployment server
 		local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
 		ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null 
+		ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$project"  < /dev/null 
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 		scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
@@ -528,6 +528,7 @@ function submitfastqcJobs {
 	local ms_runs_dir=$seqrun_runs_dir/multisample
 	mkdir -m 770 -p $seqrun_runs_dir
 	mkdir -m 770 -p $ms_runs_dir
+	chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
 	
 	#initialise job dependency list
 	local job_id_list=$ms_runs_dir/job_id_list.$SEQRUN_NAME.txt
@@ -555,9 +556,10 @@ function submitfastqcJobs {
 		
 		mkdir -m 770 -p $seqrun_results_dir
 		mkdir -m 770 -p $seqrun_results_dir/multisample
-		
 		mkdir -m 770 -p $qc_report_outputdir
-	
+		chmod -R 770 $DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME
+		chmod -R 770 $DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
+		
 		local job_id_list=$ms_runs_dir/job_id_list.$SEQRUN_NAME.txt
 
 		#create deployment directories for the QC reports for each file
@@ -595,7 +597,6 @@ function submitfastqcJobs {
 		echo "`$NOW`Read pair: $fastq_read1 AND $fastq_read2"		
 		echo "`$NOW`Job ID: $job_id"
 		echo -e "$job_id" >> $job_id_list		
-		chmod 660 $job_id_list	
 
 
 		#count 
@@ -609,6 +610,7 @@ function submitfastqcJobs {
 	#create summary directory on deployment server
 	local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
 	ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
+	ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME"  < /dev/null
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null 
 	scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
@@ -626,6 +628,9 @@ function submitfastqcJobs {
 	
 	mkdir -m 770 -p $ms_runs_dir
 	mkdir -m 770 -p $ms_results_dir
+	chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
+	chmod -R 770 $DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME
+	chmod -R 770 $DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
 	
 	local summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
 	cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
@@ -676,7 +681,8 @@ function submitMappingJob {
 			# TOPHAT RUNS
 			#############
 			echo "TOPHAT"
-			submitTOPHATJobs $PATH_SAMPLE_SHEET_REFORMATTED $project
+			submitBWAMEMJobs $PATH_SAMPLE_SHEET_REFORMATTED $project
+			#submitTOPHATJobs $PATH_SAMPLE_SHEET_REFORMATTED $project
 		else
 			# BWA RUNS
 			#############
@@ -697,6 +703,7 @@ function submitBWAMEMJobs {
         #create deployment directories
         local ms_analysis_dir=$DATA_VOL_IGF/runs/$project/bwa/$TODAY/multisample
         mkdir -m 770 -p $ms_analysis_dir
+	chmod -R 770 $DATA_VOL_IGF/runs/$project
 	local path_scripts_dir=$DATA_VOL_IGF/runs/$project/bwa/$TODAY
 	chmod 770 $path_scripts_dir
 
@@ -705,6 +712,7 @@ function submitBWAMEMJobs {
         #create summary directory on deployment server
         local bwa_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/bwa/$TODAY
         ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $bwa_summary_deployment" < /dev/null
+        ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$project/bwa" < /dev/null
         scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
         scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
         scp -r ${BWA_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$bwa_summary_deployment/ < /dev/null
@@ -796,6 +804,7 @@ function submitTOPHATJobs {
  
         local ms_analysis_dir=$DATA_VOL_IGF/runs/$project/tophat/$TODAY/multisample
         mkdir -m 770 -p $ms_analysis_dir
+	chmod -R 770 $DATA_VOL_IGF/runs/$project
  	local path_scripts_dir=$DATA_VOL_IGF/runs/$project/tophat/$TODAY
  	chmod 770 $path_scripts_dir
  
@@ -804,6 +813,7 @@ function submitTOPHATJobs {
         #create summary directory on deployment server
         local tophat_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/tophat/$TODAY
         ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $tophat_summary_deployment" < /dev/null
+        ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$project/tophat" < /dev/nul
         scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
         scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
         scp -r ${TOPHAT_SCRIPTS_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$tophat_summary_deployment/ < /dev/null
@@ -1020,6 +1030,7 @@ sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 #create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
+chmod 770 $PATH_RUN_DIR_BCL2FASTQ/index.html
 rm ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
 for LANE in $LANES
 do
@@ -1067,5 +1078,5 @@ popolateDB
 
 # MAPPING RUNS
 ##############
-#submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
+submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
 

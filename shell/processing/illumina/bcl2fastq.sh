@@ -57,6 +57,7 @@ LANE=#lane
 BASES_MASK=#basesMask
 LANE=#lane
 ILANE=#ilane
+REMOVE_ADAPTORS=#removeAdaptors
 
 #READ=#read
 
@@ -224,15 +225,15 @@ case "$ADAPTER_TYPE" in
 	;;
 esac
 
-#for TEST
 echo "`$NOW` $adapter_r1 $adapter_r2"
-# NO REMOVE ADAPTOR 	
-$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
+if [ "$REMOVE_ADAPTORS" = "T" ]
+then
+	$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r1 --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r2 --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
+else
+        # NO REMOVE ADAPTOR     
+	$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv
+fi
 #$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --ignore-missing-control --ignore-missing-stats --ignore-missing-bcl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
-#$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --ignore-missing-control --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r1 --adapter-sequence $PATH_ADAPTER_DIR/$adapter_r2 --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
-
-#$BCL2FASTQ_HOME/bin/configureBclToFastq.pl --use-bases-mask $BASES_MASK --fastq-cluster-count 0 --mismatches 0 --no-eamss --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r1.fa --adapter-sequence $BCL2FASTQ_HOME/share/bcl2fastq-1.8.4/adapters/TruSeq_r2.fa --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
-#$CASAVA_HOME/bin/configureBclToFastq.pl --fastq-cluster-count 0 --mismatches 0 --no-eamss --input-dir $TMPDIR/$RUN_NAME/Data/Intensities/BaseCalls --sample-sheet $TMPDIR/$RUN_NAME/$FLOWCELL_ID.csv 
 
 echo ""
 echo "================================================================================================"

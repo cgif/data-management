@@ -1,15 +1,16 @@
 
 USAGE
 
-    qbwape  -i <path_to_sequencing_run_directory> 
-           [-d]                
+    qbcl2cram  -i <path_to_sequencing_run_directory> -t <T|F> -a <T|F> -b <T|F>
 	
 DESCRIPTION
 
     -i  Absolute path to the sequencing run directory containing 
         the files required for conversion of BCL files to CRAM files.
 		
-    -d  If specified, CRAM files are deployed to iRODS on Eliot.
-
     -t if T iRODS is used F the files will be deployed on Eliot
+
+    -a if T the adaptor will be removed during bcl2fastq conversion, F otherwise
+
+    -b if T the bams files will be deleted after the cram generation; F otherwise
 

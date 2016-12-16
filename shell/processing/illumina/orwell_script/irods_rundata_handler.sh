@@ -18,8 +18,9 @@ INPUT_SEQRUN=$1
 IRODS_USER=$2
 IRODS_PWD=$3
 SSH_USER=$4
-############   XXXXXXXXXXXXXXX #################
 USE_IRODS=$5
+REMOVE_ADAPTORS=$6
+REMOVE_BAMS=$7
 
 RUN_NAME=`basename $INPUT_SEQRUN`
 PATH_SEQRUNS_DIR=`dirname $INPUT_SEQRUN`
@@ -223,6 +224,6 @@ rm $TRANSFER_DIR/$RUN_NAME.tar*
 #execute the bcl to cram script
 ##### XXXXXXXXX
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d -t $USE_IRODS"
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d -t $USE_IRODS -k $REMOVE_ADAPTORS -b $REMOVE_BAMS"
 
 

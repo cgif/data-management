@@ -75,15 +75,17 @@ SERP_DEPENDENCIES="afterany"
 #COMMAND LINE ARGS
 ##################
 
-IRODS_DEPLOYMENT="F"
 USE_IRODS="T"
+REMOVE_ADAPTORS="F"
+REMOVE_BAMS="T"
 
 ####### XXXXXXXXXXX
-while getopts "i:m:t:dh" option; do
+while getopts "i:t:a:b:m:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
-	d) IRODS_DEPLOYMENT="T";;				
 	t) USE_IRODS="$OPTARG";;
+	a) REMOVE_ADAPTORS="$OPTARG";;
+	b) REMOVE_BAMS="$OPTARG";;
 	h) cat "$USAGE"; exit 0;;
 	[?]) cat "$USAGE"; exit 1;;
 esac
@@ -171,6 +173,7 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#pathTemplateHtm/${TEMPLATE_PATH//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#mixedIndexes/$mixedIndexes/" $bcl2fastq_script
 	sed -i -e "s/#ilane/$lane/" $bcl2fastq_script
+	sed -i -e "s/#removeAdaptors/$REMOVE_ADAPTORS/" $bcl2fastq_script
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 
@@ -780,6 +783,7 @@ function submitBWAMEMJobs {
         sed -i -e "s/#deploymentBaseDir/${DEPLOYMENT_BASE_DIR//\//\\/}/" $script_path
         sed -i -e "s/#queue/$QUEUE/" $script_path
         sed -i -e "s/#inputSeqrunDir/${INPUT_SEQRUN_DIR//\//\\/}/" $script_path
+	sed -i -e "s/#removeBams/$REMOVE_BAMS/" $script_path
 		
         local log_path=`echo $script_path | perl -pe 's/\.sh/\.log/g'`
 

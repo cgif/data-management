@@ -1,18 +1,5 @@
 #!/bin/bash
 
-###
-#these lines were added for testing because our current run is  already registered in iRODS and first deleting it from there would take quite a while
-#for that reason, i have sought to create 'another run'(copy of the one the one on the directory)
-#cp -r /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/ /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW
-#mv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXX.csv /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-#echo -n "" > /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'NR<2{print}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD12"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-#cat /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXX/C3YBMACXX.csv | awk 'BEGIN {FS=","}{if ($3 == "CD36"){print}}' >> /home/igf/seqrun/illumina/140530_SN674_0277_BC3YBMACXW/C3YBMACXW.csv
-
-
-
-
 ##******Ordinarily, the SCRIPT STARTS FROM HERE*****
 
 #This script runs on orwell, as a cron job
@@ -21,8 +8,10 @@
 
 
 ###
-
-USE_IRODS=$1
+SKIP=$1
+USE_IRODS=$2
+REMOVE_ADAPTORS=$3
+REMOVE_BAMS=$4
 
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 PATH_SEQRUNS_DIR=/home/igf/seqrun/illumina
@@ -30,7 +19,13 @@ NOW="date +%Y-%m-%d%t%T%t"
 IRODS_USER=igf
 IRODS_PWD=igf
 
-SSH_USER=mcosso
+SSH_USER=ksannare
+
+if [ "$SKIP" = "T" ]
+then
+        echo "Skipping processing run ...."
+        exit 0
+fi
 
 #get all the runs in the sequencing-runs-directory
 #echo "`$NOW` getting runs in $PATH_SEQRUNS_DIR..."
@@ -106,8 +101,8 @@ else
 			
 				#... and start run processing
 				echo "`$NOW` Run $RUN complete. Starting processing..."
-				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS"
-				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS
+				echo "`$NOW` $BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS $REMOVE_ADAPTORS $REMOVE_BAMS"
+				$BASEDIR/irods_rundata_handler.sh $PATH_SEQRUNS_DIR/$RUN $IRODS_USER $IRODS_PWD $SSH_USER $USE_IRODS $REMOVE_ADAPTORS $REMOVE_BAMS
 	
 			fi
 		fi

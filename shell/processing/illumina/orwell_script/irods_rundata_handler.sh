@@ -224,6 +224,6 @@ rm $TRANSFER_DIR/$RUN_NAME.tar*
 #execute the bcl to cram script
 ##### XXXXXXXXX
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -d -t $USE_IRODS -k $REMOVE_ADAPTORS -b $REMOVE_BAMS"
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS"
 
 

@@ -19,7 +19,8 @@ NOW="date +%Y-%m-%d%t%T%t"
 IRODS_USER=igf
 IRODS_PWD=igf
 
-SSH_USER=ksannare
+#SSH_USER=ksannare
+SSH_USER=dkaspera
 
 if [ "$SKIP" = "T" ]
 then

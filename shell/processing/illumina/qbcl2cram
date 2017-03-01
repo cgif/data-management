@@ -61,7 +61,7 @@ BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
 SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
 TOPHAT_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/tophat
 
-BCL2FASTQ_VERSION=2.17
+BCL2FASTQ_VERSION=1.8.4
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 

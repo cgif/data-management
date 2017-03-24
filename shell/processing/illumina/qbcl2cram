@@ -8,21 +8,24 @@
 #CONFIGURATION
 ##############
 
-#now
+# getting present date and time
 NOW="date +%Y-%m-%d%t%T%t"
 
-#today
+# getting present date
 TODAY=`date +%Y-%m-%d`
 
-#returns absolute path to qfastqc directory, not changing your current directory
+
+# returns absolute path to qfastqc directory, not changing your current directory
+# setting all default values for the pipeline
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 USAGE="$BASEDIR/qbcl2cram.usage"			
 DATA_VOL_IGF=/project/tgu
-DEPLOYMENT_SERVER=eliot.med.ic.ac.uk
+DEPLOYMENT_SERVER=eliot.med.ic.ac.uk    
 DEPLOYMENT_BASE_DIR=/www/html/report
 QUEUE=pqcgi
 
 # DEPLOYMENT SETTINGS
+# DO NOT CHANGE
 CUSTOMERS_FILEPATH=/home/igf/docs/igf/users/
 DEPLOYMENT_PATH=/www/html/report/project
 HTACCESS=.htaccess
@@ -32,13 +35,17 @@ HTACCESS_TML=$TEMPLATE_PATH/htaccess.tml
 HTPASSWD_TML=$TEMPLATE_PATH/htpasswd.tml
 
 
-#BCL2FASTQ
+# BCL2FASTQ
+# Adding new parameters for bcl2fastq v2
 WALLTIME_HOURS_PER_JOB_BCL2FASTQ=72
 TMP_SPACE_GB_BCL2FASTQ=100
-THREADS_PER_RUN_BCL2FASTQ=2
-PATH_ADAPTER_DIR=$BASEDIR/../../../resources
+## THREADS_PER_RUN_BCL2FASTQ=2                    ## this option doesn't exists anymore
+## PATH_ADAPTER_DIR=$BASEDIR/../../../resources    ## this option doesn't exists anymore
+BCL2FASTQ_LOADING_THREADS=1
+BCL2FASTQ_PROCESSING_THREADS=1
+BCL2FASTQ_WRITING_THREADS=1
 
-#TARBCL2FASTQ
+# TARBCL2FASTQ
 IRODS_FASTQ_DEPLOY_SCRIPT=$BASEDIR/irods_deploy_fastq.sh
 DEPLOYMENT_TAR_BASE_DIR=/data/www/html/report/data
 
@@ -61,7 +68,9 @@ BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
 SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
 TOPHAT_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/tophat
 
-BCL2FASTQ_VERSION=1.8.4
+# Changed the BCL2FASTQ version
+#BCL2FASTQ_VERSION=1.8.4
+BCL2FASTQ_VERSION=2.18
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
 

@@ -18,6 +18,7 @@ TODAY=`date +%Y-%m-%d`
 # returns absolute path to qfastqc directory, not changing your current directory
 # setting all default values for the pipeline
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
+BASE_PYTHON_DIR=''                                  ## set python dir path
 USAGE="$BASEDIR/qbcl2cram.usage"			
 DATA_VOL_IGF=/project/tgu
 DEPLOYMENT_SERVER=eliot.med.ic.ac.uk    
@@ -107,6 +108,7 @@ then
 	exit 1
 fi
 
+export PYTHONPATH=$BASE_PYTHON_DIR:$PYTHONPATH  ## set PYTHONPATH lib
 
 #FUNCTIONS
 ##########
@@ -1017,49 +1019,67 @@ echo -n "" > $BCL2FASTQ_JOB_ID_LIST
 
 #get lanes
 #MiSeq sample sheets are detected by the missing "Lane" column.
-#If the column is not present it is assumed that the sample sheet
-#is a MiSeq sample sheet and lane equals 1
+#If the column is not present it is assumed that the sample sheet is a MiSeq sample sheet and lane equals 1, should be file for NextSeq too
+# Rewriting samplesheet processing in python
 LANES=`cut -f1 -d ',' $INPUT_SEQRUN_DIR/SampleSheet.csv | perl -e 'while(<>){ if(/\[Data\]/){ $_=<>; if(/^Lane/){ while(<>){ print; }} else { print "1\n"; } }}' | sort | uniq`
 
-#parse sample sheet into format compatible with bcl2fastq format
-#in case the sample sheet has been processed on Windows.. .
+## parse sample sheet into format compatible with bcl2fastq format
+## in case the sample sheet has been processed on Windows.. .
 dos2unix $INPUT_SEQRUN_DIR/SampleSheet.csv
-#convert sample sheet
+
+## convert sample sheet
 PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
-$BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
-###  gets the lanes where single index is used in mixed indexes run
-#remove second no index (it effects only mixed indexes run)
+
+## new samplesheet reformat script
+$BASE_PYTHON_DIR//scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED
+
+## $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
+##  gets the lanes where single index is used in mixed indexes run
+## remove second no index (it effects only mixed indexes run)
+
 mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
-#echo "mixedIndexLanes= $mixedIndexLanes"
-#reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
+echo "mixedIndexLanes= $mixedIndexLanes"
+
+## reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
-### get sequencing type for following mapping
+
+## get sequencing type for following mapping
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
-#sed -i 's/\([A|C|G|T]*\)N*\(-*\)\([A|C|G|T]\+\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+
 sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
 sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
-#create the appropriate index for lane statistics
+## create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 chmod 770 $PATH_RUN_DIR_BCL2FASTQ/index.html
 rm ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
 for LANE in $LANES
 do
 #	
-	min_idx_length=100	
+	min_idx_length=100
+        data_block=0             ## new samplesheet contain extra headers
 	while read line
         do
-		sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
-		if [ $sample_lane == $LANE ]
-		then
-			adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
+                if [[ $line =~ '[Data]'*]]
+                then
+                  data_block=1
+                  
+                  continue
+                fi
+                if [ $data_block == 1 ]
+                then
+	          sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+		  if [ $sample_lane == $LANE ]
+		  then
+		  	adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
 			index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
 			min_idx_length=${#index}
 			## generate SampleSheet for each different index length
 			echo $line >>   ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_${min_idx_length}
-		fi
+	       	  fi
+                fi
 	done <$PATH_SAMPLE_SHEET_REFORMATTED
 
 	header=`head -1 $PATH_SAMPLE_SHEET_REFORMATTED`	

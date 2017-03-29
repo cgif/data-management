@@ -94,7 +94,8 @@ echo -n "" > $CUSTOMERS_RUNS_FILE
 #get the position in the sample_sheet of sample_project column
 project_position=`cat $SAMPLE_SHEET_PREFIX.csv| grep Sample_Project | awk -F, '{for(i=1;i<=NF;i++){if($i=="Sample_Project")print i;}}'`
 
-for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f$project_position| sort | uniq | sed 1d`
+#for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |grep -v "Sample_Project"| cut -d ',' -f$project_position| sort | uniq | sed 1d`
+for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |awk -F',' 'BEGIN{data=0}{if($0 ~ /^[Data]/){data=1}{ if( data >= 1){ print $7}}}'|grep -v -e "Sample_Project" | sort -u |sed 1d`
 do
 	#for TEST
 	#echo "$project_info PROJECT INFO FILE"

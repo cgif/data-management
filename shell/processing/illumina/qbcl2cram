@@ -45,6 +45,8 @@ TMP_SPACE_GB_BCL2FASTQ=100
 BCL2FASTQ_LOADING_THREADS=1
 BCL2FASTQ_PROCESSING_THREADS=1
 BCL2FASTQ_WRITING_THREADS=1
+READOFFSET=1
+INDEXOFFSET=0
 
 # TARBCL2FASTQ
 IRODS_FASTQ_DEPLOY_SCRIPT=$BASEDIR/irods_deploy_fastq.sh
@@ -115,15 +117,20 @@ export PYTHONPATH=$BASE_PYTHON_DIR:$PYTHONPATH  ## set PYTHONPATH lib
 
 #creates job scripts
 function submitbcl2fastqJobs {
-	
+        ## $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	#bcl2Fastq variables
 	local seqrun_directory=$1
 	local path_sample_sheet=$2
-	local path_sample_sheet_reformatted=$3
-	local lane=$4
-	local adapter_type=$5
-	local mixedIndexLanes=$6
-
+	local path_sample_sheet_reformatted=$2
+	#local path_sample_sheet_reformatted=$3
+	local lane=$3
+	#local lane=$4
+	local adapter_type=$4
+	#local adapter_type=$5
+	local mixedIndexLanes=$5
+	#local mixedIndexLanes=$6
+        
+ 
 	#BCL2FASTQ CONVERSION
 	#####################
 
@@ -133,23 +140,24 @@ function submitbcl2fastqJobs {
  	#reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
  	pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
  	#echo "pairedEnd $pairedEnd"
- 	mixedIndex=`echo $mixedIndexLanes | grep $lane | wc -l`
+ 	#mixedIndex=`echo $mixedIndexLanes | grep $lane | wc -l`
  	#echo "mixedIndex $mixedIndex"
 	
- 	if [ $pairedEnd -eq 1 ] && [ $mixedIndex -eq 1 ]
- 	then
-		echo "`$NOW` RUN mixed Index and paired-end "
- 		mixedIndexes=0
- 	else
-		if [ $mixedIndex -eq 1 ]
-		then
-			echo "`$NOW` RUN mixed Index and single read "
-		fi
- 		mixedIndexes=$mixedIndex
- 	fi	
+ 	#if [ $pairedEnd -eq 1 ] && [ $mixedIndex -eq 1 ]
+ 	#then
+	#	echo "`$NOW` RUN mixed Index and paired-end "
+ 	#	mixedIndexes=0
+ 	#else
+	#	if [ $mixedIndex -eq 1 ]
+	#	then
+	#		echo "`$NOW` RUN mixed Index and single read "
+	#	fi
+ 	#	mixedIndexes=$mixedIndex
+ 	#fi	
 
  	#make bases mask pass also mixedIndex information
- 	local bases_mask=`$BASEDIR/makeBasesMask.pl $path_sample_sheet $INPUT_SEQRUN_DIR/RunInfo.xml $tlane $mixedIndex`
+ 	#local bases_mask=`$BASEDIR/makeBasesMask.pl $path_sample_sheet $INPUT_SEQRUN_DIR/RunInfo.xml $tlane $mixedIndex`
+        local_bases_mask=`$BASE_PYTHON_DIR/scripts/basesMask/makeBasesMask.py --samplesheet_file $path_sample_sheet --runinfo_file $INPUT_SEQRUN_DIR/RunInfo.xml --read_offset $READOFFSET --index_offset $INDEXOFFSET`
 	echo "Sample sheet passed to make mask $path_sample_sheet"
 	
 	#create summary directory on deployment server
@@ -164,7 +172,10 @@ function submitbcl2fastqJobs {
 	chmod 770 $bcl2fastq_script
 
 	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB_BCL2FASTQ/" $bcl2fastq_script
-	sed -i -e "s/#threads/$THREADS_PER_RUN_BCL2FASTQ/" $bcl2fastq_script
+	#sed -i -e "s/#threads/$THREADS_PER_RUN_BCL2FASTQ/" $bcl2fastq_script
+	sed -i -e "s/#loading_threads/$BCL2FASTQ_LOADING_THREADS/" $bcl2fastq_script
+	sed -i -e "s/#processing_threads/$BCL2FASTQ_PROCESSING_THREADS/" $bcl2fastq_script
+	sed -i -e "s/#writing_threads/$BCL2FASTQ_WRITING_THREADS/" $bcl2fastq_script
 	sed -i -e "s/#runName/$SEQRUN_NAME/" $bcl2fastq_script
 	sed -i -e "s/#pathSampleSheet/${path_sample_sheet_reformatted//\//\\/}/" $bcl2fastq_script
 	sed -i -e "s/#lane/$tlane/" $bcl2fastq_script
@@ -1032,14 +1043,14 @@ PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 
 ## new samplesheet reformat script
-$BASE_PYTHON_DIR//scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED
+$BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED
 
 ## $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
 ##  gets the lanes where single index is used in mixed indexes run
 ## remove second no index (it effects only mixed indexes run)
 
-mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
-echo "mixedIndexLanes= $mixedIndexLanes"
+#mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
+#echo "mixedIndexLanes= $mixedIndexLanes"
 
 ## reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
@@ -1048,50 +1059,61 @@ pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
 
-sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
-sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
+#sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
+#sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
 
 ## create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 chmod 770 $PATH_RUN_DIR_BCL2FASTQ/index.html
+
+# removing previous sub samplesheets
 rm ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
+
+# generate current sub samplesheets
+$BASE_PYTHON_DIR/scripts/SampleSheet/divide_samplesheet.py --samplesheet_file $PATH_SAMPLE_SHEET_REFORMATTED --output_dir $PATH_RUN_DIR_BCL2FASTQ
+
+
 for LANE in $LANES
 do
 #	
-	min_idx_length=100
-        data_block=0             ## new samplesheet contain extra headers
-	while read line
-        do
-                if [[ $line =~ '[Data]'*]]
-                then
-                  data_block=1
+	#min_idx_length=100
+        #data_block=0             ## new samplesheet contain extra headers
+	#while read line
+        #do
+        #        if [[ $line =~ '[Data]'*]]
+        #        then
+        #          data_block=1
                   
-                  continue
-                fi
-                if [ $data_block == 1 ]
-                then
-	          sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
-		  if [ $sample_lane == $LANE ]
-		  then
-		  	adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
-			index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
-			min_idx_length=${#index}
-			## generate SampleSheet for each different index length
-			echo $line >>   ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_${min_idx_length}
-	       	  fi
-                fi
-	done <$PATH_SAMPLE_SHEET_REFORMATTED
+        #          continue
+        #        fi
+        #        if [ $data_block == 1 ]
+        #        then
+	#          sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
+	#	  if [ $sample_lane == $LANE ]
+	#	  then
+	#	  	#adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
+	#		#index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
+	#		#min_idx_length=${#index}
+	#		## generate SampleSheet for each different index length
+	#		echo $line >>   ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_${min_idx_length}
+	#       	  fi
+        #        fi
+	#done <$PATH_SAMPLE_SHEET_REFORMATTED
 
-	header=`head -1 $PATH_SAMPLE_SHEET_REFORMATTED`	
-	sed -i '1s/^/'$header'\n/'  ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_*
+	#header=`head -1 $PATH_SAMPLE_SHEET_REFORMATTED`	
+	#sed -i '1s/^/'$header'\n/'  ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_*
 
 	# foreach different SampleSheet submit bcl2fastq job (different mask)
 	for SampleSheet in `ls --color=never ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_*`
 	do
-		lane_idx_length=`echo $SampleSheet | cut -d "/" -f9 | cut -d "_" -f2,3`
-		mylane=`echo $lane_idx_length | cut -d "_" -f1`
+		#lane_idx_length=`echo $SampleSheet | cut -d "/" -f9 | cut -d "_" -f2,3`
+		lane_idx_length=`echo $SampleSheet | xargs -i basename {} | cut -d "_" -f2,3`
+		#mylane=`echo $lane_idx_length | cut -d "_" -f1`
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
-		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
+		#submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
+                adapter_type=''
+                mixedIndexLanes=''
+		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	done;
 done
 sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 

@@ -22,7 +22,7 @@ NOW="date +%Y-%m-%d%t%T%t"
 TODAY=`date +%Y-%m-%d`
 
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
-#BASE_PYTHON_DIR=
+BASE_PYTHON_DIR=#base_python_dir
 SCRIPT_NAME=$0
 DATA_VOL_IGF=#dataVolIgf
 

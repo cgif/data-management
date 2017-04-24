@@ -139,24 +139,9 @@ function submitbcl2fastqJobs {
 
  	#reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
  	pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
- 	#echo "pairedEnd $pairedEnd"
- 	#mixedIndex=`echo $mixedIndexLanes | grep $lane | wc -l`
- 	#echo "mixedIndex $mixedIndex"
 	
- 	#if [ $pairedEnd -eq 1 ] && [ $mixedIndex -eq 1 ]
- 	#then
-	#	echo "`$NOW` RUN mixed Index and paired-end "
- 	#	mixedIndexes=0
- 	#else
-	#	if [ $mixedIndex -eq 1 ]
-	#	then
-	#		echo "`$NOW` RUN mixed Index and single read "
-	#	fi
- 	#	mixedIndexes=$mixedIndex
- 	#fi	
 
  	#make bases mask pass also mixedIndex information
- 	#local bases_mask=`$BASEDIR/makeBasesMask.pl $path_sample_sheet $INPUT_SEQRUN_DIR/RunInfo.xml $tlane $mixedIndex`
         local_bases_mask=`$BASE_PYTHON_DIR/scripts/basesMask/makeBasesMask.py --samplesheet_file $path_sample_sheet --runinfo_file $INPUT_SEQRUN_DIR/RunInfo.xml --read_offset $READOFFSET --index_offset $INDEXOFFSET`
 	echo "Sample sheet passed to make mask $path_sample_sheet"
 	
@@ -173,7 +158,6 @@ function submitbcl2fastqJobs {
 
         total_threads=`expr $BCL2FASTQ_LOADING_THREADS + $BCL2FASTQ_PROCESSING_THREADS + $BCL2FASTQ_WRITING_THREADS`
 	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB_BCL2FASTQ/" $bcl2fastq_script
-	#sed -i -e "s/#threads/$THREADS_PER_RUN_BCL2FASTQ/" $bcl2fastq_script
 	sed -i -e "s/#threads/$total_threads/" $bcl2fastq_script
 	sed -i -e "s/#loading_threads/$BCL2FASTQ_LOADING_THREADS/" $bcl2fastq_script
 	sed -i -e "s/#processing_threads/$BCL2FASTQ_PROCESSING_THREADS/" $bcl2fastq_script
@@ -198,6 +182,8 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#mixedIndexes/$mixedIndexes/" $bcl2fastq_script
 	sed -i -e "s/#ilane/$lane/" $bcl2fastq_script
 	sed -i -e "s/#removeAdaptors/$REMOVE_ADAPTORS/" $bcl2fastq_script
+	sed -i -e "s/#base_python_dir/$BASE_PYTHON_DIR/" $bcl2fastq_script
+        
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 
@@ -228,9 +214,7 @@ function submitIrodsDeployFastq {
                         #get current 	lane...
                         local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
                         #get project_tag
-                        #local project_name=`echo $sampleSheetRow | cut -f10 -d ','| cut -f1 -d ':' |perl -pe 's/\s//g'`
                         local project_name=`echo $sampleSheetRow | cut -f10 -d ',' |perl -pe 's/\s//g'`
-                        #local customer_name=`echo $sampleSheetRow | cut -f10 -d ','| cut -f2 -d ':' |perl -pe 's/\s//g'`
 			
 			# create a file with sample_lane foreach project_tag
 			chmod 770 $PATH_RUN_DIR_BCL2FASTQ
@@ -240,7 +224,6 @@ function submitIrodsDeployFastq {
 		 
 		
 		#create the appropriate index forlane statistics
-		#cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 
                 for project_file in `ls --color=never $PATH_RUN_DIR_BCL2FASTQ | grep .prj`
                 do

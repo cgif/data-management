@@ -45,9 +45,9 @@ SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_n
 module load irods/4.2.0
 iinit igf
 
-echo "`$NOW` genereting global SampleSheet for the project ..."
-ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; cat $SEQ_RUN_DATE/*/SampleSheet.* | grep -v FCID > $SEQ_RUN_DATE/SampleSheet.csv"	
-
+#echo "`$NOW` genereting global SampleSheet for the project ..."
+#ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; cat $SEQ_RUN_DATE/*/SampleSheet.* | grep -v FCID > $SEQ_RUN_DATE/SampleSheet.csv"	
+# stopped now
 
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; tar hcfz $SEQ_RUN_DATE.tar.gz  $SEQ_RUN_DATE"	
@@ -140,6 +140,9 @@ then
 
 ######################## END XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 else
+        echo 'stopped copying data to Eliot'
+        exit 1
+
 	deployment_symbolic_link=$DEPLOYMENT_BASE_DIR/$PROJECT_TAG
 	ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $deployment_symbolic_link"
 	path_2_fastq=$deployment_symbolic_link/fastq

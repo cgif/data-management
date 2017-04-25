@@ -201,26 +201,34 @@ function submitIrodsDeployFastq {
                 local path_sample_sheet_reformatted=$1
 	
                 local rowcount=0
-                # lookup lanes for each project_tag
-                while read sampleSheetRow
+                local sample_col=0
+                local project_col=0
+               # lookup lanes for each project_tag
+                for sampleSheetRow in `awk 'BEGIN{data_block=0}{if($0 ~ /^\[Data\]/){data_block=1; next}if(data_block==1){print $0}}' $path_sample_sheet_original` 
                 do
                         #skip sample sheet header
                         rowcount=$(( $rowcount + 1 ))
                         if [ "$rowcount" -eq "1" ]
                         then
-                                continue
+                             sample_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_Name' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
+                             project_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_Project' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`    
+                             continue
                         fi
 
                         #get current 	lane...
-                        local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
-                        #get project_tag
-                        local project_name=`echo $sampleSheetRow | cut -f10 -d ',' |perl -pe 's/\s//g'`
+                        if [ $sample_col -gt 0 ] && [ $project_col -gt 0 ]; then
+                            local sample_lane=`echo $sampleSheetRow | cut -f2 -d ','| perl -pe 's/\s//g'`
+                            #get project_tag
+                            local project_name=`echo $sampleSheetRow | cut -f10 -d ',' |perl -pe 's/\s//g'`
 			
-			# create a file with sample_lane foreach project_tag
-			chmod 770 $PATH_RUN_DIR_BCL2FASTQ
-                        echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
-
-                done < $path_sample_sheet_reformatted
+			    # create a file with sample_lane foreach project_tag
+			    chmod 770 $PATH_RUN_DIR_BCL2FASTQ
+                            echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
+                        else
+                            echo "couldn't identify the sample_col or project_col"
+                            exit 1
+                        fi
+                done
 		 
 		
 		#create the appropriate index forlane statistics
@@ -253,9 +261,6 @@ function submitIrodsDeployFastq {
                                         tarresults_job_dependency="$tarresults_job_dependency:$job_id"
 
                                 done <$BCL2FASTQ_JOB_ID_LIST
-				# for TEST
-                                #echo $tarresults_job_dependency
-				#sed -i '/<!--/{ N; N; s/.*\n\(.*href=lane'${lane}'.*\)\n.*-->.*/\1/; }' $PATH_RUN_DIR_BCL2FASTQ/index.html 
                         done
 
                         #########################################

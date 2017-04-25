@@ -5,7 +5,7 @@
 #
 
 #PBS -l walltime=#walltimeHours:00:00
-#PBS -l select=1:ncpus=#threads:mem=1024mb:tmpspace=#tmpSpacegb
+#PBS -l select=1:ncpus=#threads:mem=#required_memory:tmpspace=#tmpSpacegb
 
 #PBS -m ea
 #PBS -M igf@imperial.ac.uk
@@ -23,8 +23,9 @@ TODAY=`date +%Y-%m-%d`
 
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 BASE_PYTHON_DIR=#base_python_dir
-SCRIPT_NAME=$0
-DATA_VOL_IGF=#dataVolIgf
+
+#set python path
+export PYTHONPATH=$BASE_PYTHON_DIR
 
 #number of threads for BCL conversion
 LOADING_THREADS=#loading_threads
@@ -32,17 +33,9 @@ PROCESSING_THREADS=#processing_threads
 WRITING_THREADS=#writing_threads
 
 PATH_SEQRUN_DIR=#pathSeqRunDir
-PATH_RUN_DIR=#pathRunDir
-PATH_RESULTS_DIR=#pathResultsDir
 PATH_RAWDATA_DIR=#pathRawDataDir
-PATH_ADAPTER_DIR=#pathAdapterDir
 PATH_SAMPLE_SHEET=#pathSampleSheet
-PATH_TEMPLATE_HTM=#pathTemplateHtm
 RUN_NAME=#runName
-ADAPTER_TYPE=#adapterType
-DEPLOYMENT_SERVER=#deploymentServer
-DEPLOYMENT_PATH=#deploymentPath
-MIXED_INDEXES=#mixedIndexes
 
 RUN_DATE=`echo $RUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;
 
@@ -52,26 +45,25 @@ RUN_DATE=`echo $RUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ pr
 #MiSeq run: MiSeq runs are detected by the hyphen in the last token of the run name;
 #for MiSeq runs the flowcell ID is the token after the hyphen: 000000000-<flowcell_id>
 
-FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$id=<>; chomp($id); if(! $id =~ /-/){ $id=~s/^[AB]//; } print $id'`
-LANE=#lane
+FLOWCELL_ID=`echo $RUN_NAME | cut -f4 -d '_' | perl -e '$id=<>; chomp($id); if( $id !~ /-/){ $id=~s/^[AB]//; } print $id'`
+
 BASES_MASK=#basesMask
 LANE=#lane
 ILANE=#ilane
 
-mkdir -p $TMPDIR/$RUN_NAME/fastq/$ILANE
+mkdir -p $TMPDIR/$RUN_NAME/$ILANE/fastq
 
 #stage required files
 #####################
 python $BASE_PYTHON_DIR/scripts/file_copy/moveFilesForDemultiplexing.py -i $PATH_SEQRUN_DIR -o $TMPDIR/$RUN_NAME/$ILANE -s $PATH_SAMPLE_SHEET -r $PATH_SEQRUN_DIR/RunInfo.xml
 
-
 # Run BC2Fastq
 ###################
 
 bcl2fastq \
---runfolder-dir $TMPDIR/$RUN_NAME \
+--runfolder-dir $TMPDIR/$RUN_NAME/$ILANE \
 --sample-sheet  $PATH_SAMPLE_SHEET \
---output-dir $TMPDIR/$RUN_NAME/fastq/$ILANE \
+--output-dir $TMPDIR/$RUN_NAME/$ILANE/fastq \
 -r $LOADING_THREADS \
 -p $PROCESSING_THREADS \
 -w $WRITING_THREADS \
@@ -79,8 +71,6 @@ bcl2fastq \
 --barcode-mismatches 1 \
 --auto-set-to-zero-barcode-mismatches
 
-
-lane_idxLength=`echo $PATH_SAMPLE_SHEET | dirname | cut -d "_" -f2,3`
 
 #undetermined indices fastqs
 ############################
@@ -92,33 +82,35 @@ lane_idxLength=`echo $PATH_SAMPLE_SHEET | dirname | cut -d "_" -f2,3`
 ##############
 
 #iterate over project folders
-for PROJECT_DIR in `find $TMPDIR/$RUN_NAME/${ILANE} -maxdepth 1 -type d -exec basename {} \;`
+for PROJECT_DIR in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do	
-	mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}
-	chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}
-        cp $PATH_SAMPLESHEET $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
-        chmod 660 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
+        if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then
+	  mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
+	  chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
+          cp $PATH_SAMPLESHEET $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
+          chmod 660 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
 
-	for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/$PROJECT_DIR/ -maxdepth 1 -type d -exec basename {} \;`
-	do
-		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/$PROJECT_DIR/$SAMPLE_DIR_NAME
-
+	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
+	  do
 		#...parse sample name
 		SAMPLE_NAME=$SAMPLE_DIR_NAME
 		echo "`$NOW`$SAMPLE_NAME"
-		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/$PROJECT_DIR/$SAMPLE_NAME
-		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq
 
-                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/Reports
-                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/Stats
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/Reports $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/Reports
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/Stats $PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/Stats
+		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
+		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
+		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
+		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE
+		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq
+
+                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
+                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
+ 
+                # copying Stats and Reports to each project dir
+                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
+                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
                  
                 #set destination directory path
-		DESTINATION_DIR=$PATH_RAWDATA_DIR/$PROJECT_NAME/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
+		DESTINATION_DIR=$PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
 
 		#store current working directory
 		WORKING_DIR=$PWD
@@ -131,23 +123,28 @@ do
 		do
 			#...make fastq output file name
 			FASTQ_FILE=`basename $FASTQ_FILE`
-			
-			md5sum $FASTQ_FILE > $FASTQ_FILE.md5
+                        FASTQ_NAME=`echo $FASTQ_FILE | perl -pe "s/^${SAMPLE_NAME}_/${RUN_NAME}_/"`
+                      
+                        mv $FASTQ_FILE $FASTQ_NAME
+			md5sum $FASTQ_NAME > $FASTQ_NAME.md5
 			
 			#fastq
-			cp -av $FASTQ_FILE $DESTINATION_DIR/ 				
-			chmod 660 $DESTINATION_DIR/$FASTQ_FILE
+			cp -av $FASTQ_NAME $DESTINATION_DIR/ 				
+			chmod 660 $DESTINATION_DIR/$FASTQ_NAME
 
 			#md5
-			cp -v $FASTQ_FILE.md5 $DESTINATION_DIR/ 				
-			chmod 660 $DESTINATION_DIR/$FASTQ_FILE.md5
+			cp -v $FASTQ_NAME.md5 $DESTINATION_DIR/ 				
+			chmod 660 $DESTINATION_DIR/$FASTQ_NAME.md5
 
 		done
 		cd $WORKING_DIR
-	done
+	  done
+      fi
 done
 
 
 ## adding html for lanes statistics
 ######################################
+
+# Not adding any HTML
 

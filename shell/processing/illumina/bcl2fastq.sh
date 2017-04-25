@@ -93,21 +93,53 @@ do
 	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 	  do
 		#...parse sample name
-		SAMPLE_NAME=$SAMPLE_DIR_NAME
-		echo "`$NOW`$SAMPLE_NAME"
+		SAMPLE_ID=$SAMPLE_DIR_NAME
+		echo "`$NOW`$SAMPLE_ID"
+
+                               # hack for getting sample name
+                local sample_name_col=0
+                local sample_id_col=0
+                local rowcount=0
+
+                for sampleSheetRow in `awk 'BEGIN{data_block=0}{if($0 ~ /^\[Data\]/){data_block=1; next}if(data_block==1){print $0}}' $PATH_SAMPLE_SHEET`
+                do
+                    rowcount=$(( $rowcount + 1 ))
+                    if [ "$rowcount" -eq "1" ]; then
+                      sample_name_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_Name' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
+                      sample_id_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_ID' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
+                      continue
+                    fi
+                    if [ $sample_name_col -gt 0 ] && [ $sample_id_col -gt 0 ]; then
+                      local sample_name_val=`echo $sampleSheetRow |cut -d',' -f${sample_name_col}`
+                      local sample_id_val=`echo $sampleSheetRow |cut -d',' -f${sample_id_col}`
+
+                      if [ $sample_id_val == $SAMPLE_ID ]; then
+                        SAMPLE_NAME=$sample_name_val
+                      fi
+                    else
+                      echo 'sample id and name column not found'
+                      exit 1
+                    fi
+                done
+
+                if [ ! $SAMPLE_NAME ]; then
+                  echo 'sample name not found'
+                  exit 1
+                fi
+
+                echo "`$NOW`$SAMPLE_NAME"
+
 
 		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
 		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE
-		chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq
+		chmod -R 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq
 
                 mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
                 mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
  
                 # copying Stats and Reports to each project dir
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
+                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
+                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
                  
                 #set destination directory path
 		DESTINATION_DIR=$PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME

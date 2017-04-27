@@ -23,10 +23,4 @@ CUSTOMER_USERNAME=#customerUsername
 IRODS_USER=igf
 IRODS_PWD=igf
 
-#ADDING FASTQ FILES TO WOOLF(woolfResc)
-#module load irods/4.2.0
-#iinit igf
-
-#ichmod -r read $CUSTOMER_USERNAME/igfZone/home/$CUSTOMER_USERNAME/
-
 sendmail -t < $CUSTOMER_EMAIL

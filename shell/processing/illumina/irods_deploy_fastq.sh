@@ -45,10 +45,6 @@ SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_n
 module load irods/4.2.0
 iinit igf
 
-#echo "`$NOW` genereting global SampleSheet for the project ..."
-#ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; cat $SEQ_RUN_DATE/*/SampleSheet.* | grep -v FCID > $SEQ_RUN_DATE/SampleSheet.csv"	
-# stopped now
-
 echo "`$NOW` tarring the archive of $SEQ_RUN_DATE ..."
 ssh login.cx1.hpc.ic.ac.uk "cd $PATH_TO_DESTINATION; tar hcfz $SEQ_RUN_DATE.tar.gz  $SEQ_RUN_DATE"	
 
@@ -82,6 +78,7 @@ customer_passwd=`echo $customers_info|cut -d ',' -f4`
 customer_email=`echo $customers_info|cut -d ',' -f5`
 
 echo "UTENTE $customer_username"
+
 # check if is internal customer
 ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
 retval=$?
@@ -97,12 +94,15 @@ then
 	echo "$NOW checking if user already exists ..."
 	irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
 	echo "$NOW irods_user $irods_user"
+
 	# if the user has not yet been created, then we create him
 	if [ "$irods_user" = "" ]
 	then
 		echo "$NOW creating user ..."
+
 		# make user
 		iadmin mkuser $customer_username#igfZone rodsuser
+
 		#external user set a password
 		if [ "$externalUser" = "Y" ]; then
 			iadmin moduser $customer_username#igfZone password $customer_passwd
@@ -146,6 +146,7 @@ else
 	deployment_symbolic_link=$DEPLOYMENT_BASE_DIR/$PROJECT_TAG
 	ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $deployment_symbolic_link"
 	path_2_fastq=$deployment_symbolic_link/fastq
+
 	#checks if in project_tag  already exists fastq directory
 	# if yes: Add new files in that directory
 	# if no: generate rnd direcory name and create fastq symbolic link to it
@@ -160,6 +161,7 @@ else
 	
 		echo "`$NOW` coping TAR archive on eliot server ..."
 		scp -r $PATH_TO_DESTINATION/$SEQ_RUN_DATE.tar.gz* $DEPLOYMENT_SERVER:$PATH_TO_RNDDIR 
+
 		#create project_tag dir & symbolic link
 		ssh $DEPLOYMENT_SERVER "ln -s  $PATH_TO_RNDDIR $path_2_fastq"
 	fi
@@ -174,6 +176,7 @@ if [[ $customer_email != *"@"* ]]; then
 	#send email alert...
 	echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
 fi
+
 #Prepare the email to send to the customer
 customer_mail=customer_mail.$PROJECT_TAG
 if [[ $externalUser == "Y" ]]; then
@@ -211,39 +214,16 @@ echo -n "" > $log_output_path
 echo -n "`$NOW`submitting send email to the customer job: " 
 echo "$send_email_script"
 
-#Prepare the email to send to Lab head & IGF to notify that new data are ready
-#notification_mail=$RUN_DIR_BCL2FASTQ/notification_mail.$PROJECT_TAG
-#send_notification_script=$RUN_DIR_BCL2FASTQ/send_notification.${PROJECT_TAG}.sh
-#cp $SEND_NOTIFICATION_SCRIPT  $send_notification_script
-#sed -i -e "s/#notificationEmail/${notification_mail//\//\\/}/" $send_notification_script
-#log_notification_path=`echo $send_notification_script | perl -pe 's/\.sh/\.log/g'`
-#chmod 770 $send_notification_script
-
-#cp $MAIL_TEMPLATE_PATH/notification_dissemination_mail.tml $notification_mail
-#chmod 770 $RUN_DIR_BCL2FASTQ/$notification_mail
-#sed -i -e "s/#projectName/$PROJECT_TAG/" $notification_mail
-#sed -i -e "s/#sendEmailScript/${send_email_script//\//\\/}/" $notification_mail
-
-#send to Lab head & IGF to notify that new data are ready
-#job_id=null
-#job_id=`qsub -o $log_notification_path -j oe $send_notification_script`
-#echo "qsub -o $log_notification_path -j oe $send_notification_script"
-#echo "`$NOW`Job ID:$job_id"
-#chmod 660 $log_notification_path
-
 #Before to send the email to the customer the invoice has to be paid!!!
 #send to the customer
 job_id=null
 job_id=`qsub -o $log_output_path -j oe $send_email_script`
 echo "qsub -o $log_output_path -j oe $send_email_script"
-#echo "`$NOW`Job ID:$job_id"
 chmod 660 $log_output_path
 
 
 disseminate=`grep $PROJECT_TAG $RUN_DIR_BCL2FASTQ/*.discard | cut -d "," -f10 | sort | uniq | wc -l`
-#disseminate=0
 if [ "$disseminate" -eq 0 ]; then
-	#sendmail -t < $RUN_DIR_BCL2FASTQ/$customer_mail 
 	echo "SEND_EMAIL"
 else
 	# Prepare and send email with reads under the threshold
@@ -256,5 +236,3 @@ else
 	echo "NO SEND_EMAIL"
 fi
 #now remove 
-#rm $RUN_DIR_BCL2FASTQ/$customer_mail
-#sed -i /$PROJECT_TAG/d $CUSTOMER_FILE_PATH/customerInfo.csv

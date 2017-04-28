@@ -141,14 +141,14 @@ echo "`$NOW` Creating target directory $PATH_TARGET_DIR on $HOST..."
 ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR
 
 # use rsync for file transfer
-rsync -aPce $TRANSFER_DIR/$RUN_NAME.tar $SSH_USER@$HOST:$PATH_TARGET_DIR
+rsync -aPce ssh $TRANSFER_DIR/$RUN_NAME.tar $SSH_USER@$HOST:$PATH_TARGET_DIR
 retval=$?
 if [ $retval -ne 0 ]; then
   echo "`$NOW` ERROR registering run data in $TRANSFER_DIR/$RUN_NAME
   exit 1
 fi
 
-rsync -aPce $TRANSFER_DIR/$RUN_NAME.tar.md5 $SSH_USER@$HOST:$PATH_TARGET_DIR
+rsync -aPce ssh $TRANSFER_DIR/$RUN_NAME.tar.md5 $SSH_USER@$HOST:$PATH_TARGET_DIR
 
 retval=$?
 if [ $retval -ne 0 ]; then

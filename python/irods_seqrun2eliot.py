@@ -41,7 +41,7 @@ for run_id in ((x for x in os.listdir(seq_run_dir) if os.path.isdir(os.path.join
   if run_id not in run_list: new_run.append(run_id)
 
 # check current process list
-process_list=Popen(['ps','-e'], stdout=PIPE)
+process_list=Popen(['ps','-ef'], stdout=PIPE)
 matched_process_pipe=Popen(['grep', irods_handler_script_basename], stdin=process_list.stdout, stdout=PIPE)
 process_list.stdout.close()
 matched_process=matched_process_pipe.communicate()[0]

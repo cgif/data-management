@@ -2,7 +2,7 @@ import os, argparse
 from subprocess import call, Popen, PIPE
 
 parser=argparse.ArgumentParser()
-parser.add_argument('-d','--base_dir',       required=True, help='Base code directory')
+parser.add_argument('-b','--base_dir',       required=True, help='Base code directory')
 parser.add_argument('-d','--base_python_dir',required=True, help='Base python code directory')
 parser.add_argument('-s','--ssh_user',       required=True, help='Unix user name for SSH')
 parser.add_argument('-u','--irods_user',     required=True, help='IRODS username')
@@ -46,7 +46,7 @@ matched_process_pipe=Popen(['grep', irods_handler_script_basename], stdin=p1.std
 matched_process=matched_process_pipe.communicate()[0]
 
 # submit job only if new runs found and 
-if len(new_run)>0 && len(matched_process)==0:
+if len(new_run)>0 and len(matched_process)==0:
   for run in new_run:
      rta_file_path=os.path.join(seq_run_dir,run,'RTAComplete.txt')
      if os.path.exists(rta_file_path):

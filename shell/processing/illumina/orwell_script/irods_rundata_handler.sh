@@ -184,10 +184,12 @@ ssh $SSH_USER@$HOST "tar xf $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME
 #after getting the necessary files, we can now delete the .tar and .md5 of that run
 echo "`$NOW` Deleting tar archive and md5 file from $HOST..."
 ssh $SSH_USER@$HOST "rm -f $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar"
+ssh $SSH_USER@$HOST "rm -f $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar.md5"
 
 #remove local copies of tar and md5
 echo "`$NOW` Removing local copies of tar archive and md5 file..."
 rm -f $TRANSFER_DIR/$RUN_NAME.tar
+rm -f $TRANSFER_DIR/$RUN_NAME.tar.md5
 
 #execute the bcl to cram script
 ##### XXXXXXXXX

@@ -72,7 +72,6 @@ SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
 TOPHAT_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/tophat
 
 # Changed the BCL2FASTQ version
-#BCL2FASTQ_VERSION=1.8.4
 BCL2FASTQ_VERSION=2.18
 SAMTOOLS_VERSION=1.1
 BWA_VERSION=0.7.5a
@@ -84,7 +83,7 @@ SERP_DEPENDENCIES="afterany"
 #SPLIT_SCRIPT
 #SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
 
-#COMMAND LINE ARGS
+#COMMAND LINE ARGS : Legacy parameters
 ##################
 
 USE_IRODS="T"
@@ -92,11 +91,12 @@ REMOVE_ADAPTORS="F"
 REMOVE_BAMS="T"
 
 ####### XXXXXXXXXXX
-while getopts "i:t:a:b:m:dh" option; do
+while getopts "i:t:a:p:b:m:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
 	t) USE_IRODS="$OPTARG";;
 	a) REMOVE_ADAPTORS="$OPTARG";;
+	p) BASE_PYTHON_DIR="$OPTARG";;
 	b) REMOVE_BAMS="$OPTARG";;
 	h) cat "$USAGE"; exit 0;;
 	[?]) cat "$USAGE"; exit 1;;
@@ -110,25 +110,21 @@ then
 	exit 1
 fi
 
-export PYTHONPATH=$BASE_PYTHON_DIR:$PYTHONPATH  ## set PYTHONPATH lib
+PYTHONPATH=`printenv PYTHONPATH`
+export PYTHONPATH="$BASE_PYTHON_DIR:$PYTHONPATH"  ## set PYTHONPATH lib
 
 #FUNCTIONS
 ##########
 
 #creates job scripts
 function submitbcl2fastqJobs {
-        ## $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	#bcl2Fastq variables
 	local seqrun_directory=$1
 	local path_sample_sheet=$2
 	local path_sample_sheet_reformatted=$2
-	#local path_sample_sheet_reformatted=$3
 	local lane=$3
-	#local lane=$4
 	local adapter_type=$4
-	#local adapter_type=$5
 	local mixedIndexLanes=$5
-	#local mixedIndexLanes=$6
         
  
 	#BCL2FASTQ CONVERSION

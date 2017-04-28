@@ -18,9 +18,11 @@ INPUT_SEQRUN=$1
 IRODS_USER=$2
 IRODS_PWD=$3
 SSH_USER=$4
-USE_IRODS=$5
-REMOVE_ADAPTORS=$6
-REMOVE_BAMS=$7
+BASE_PYTHON_DIR=$5
+USE_IRODS=$6
+REMOVE_ADAPTORS=$7
+REMOVE_BAMS=$8
+
 
 RUN_NAME=`basename $INPUT_SEQRUN`
 PATH_SEQRUNS_DIR=`dirname $INPUT_SEQRUN`
@@ -34,7 +36,6 @@ LOG=/home/igf/log/seqrun_processing/$RUN_NAME.log
 
 HOST=login.cx1.hpc.ic.ac.uk
 DATA_VOL_IGF=/project/tgu
-#PATH_BCL2CRAM_SCRIPT=/home/mcosso/git/data-management/shell/processing/illumina/qbcl2cram
 PATH_BCL2CRAM_SCRIPT=/project/tgu/src/data-management/shell/processing/illumina/qbcl2cram
 
 DEPLOYMENT_HOST=eliot.med.ic.ac.uk
@@ -179,15 +180,15 @@ ssh $SSH_USER@$HOST "tar xf $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME
 
 #after getting the necessary files, we can now delete the .tar and .md5 of that run
 echo "`$NOW` Deleting tar archive and md5 file from $HOST..."
-ssh $SSH_USER@$HOST "rm $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar"
+ssh $SSH_USER@$HOST "rm -f $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar"
 
 #remove local copies of tar and md5
 echo "`$NOW` Removing local copies of tar archive and md5 file..."
-rm $TRANSFER_DIR/$RUN_NAME.tar
+rm -f $TRANSFER_DIR/$RUN_NAME.tar
 
 #execute the bcl to cram script
 ##### XXXXXXXXX
 echo "`$NOW` Starting BCL-to-CRAM conversion..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS"
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS -p $BASE_PYTHON_DIR"
 
 

@@ -52,4 +52,6 @@ if len(new_run)>0 and len(matched_process)==0:
      rta_file_path=os.path.join(seq_run_dir,run,'RTAComplete.txt')
      if os.path.exists(rta_file_path):
        orwell_run_dir=os.path.join(seq_run_dir,run)
-       call([irods_handler_script, orwell_run_dir, irods_user, irods_pass, ssh_user, 'T', 'T', 'T']) # legacy parameters
+       call([irods_handler_script, orwell_run_dir, irods_user, irods_pass, ssh_user, base_python_dir, 'T', 'T', 'T']) # legacy parameters
+       print('submitting jobs for {0}'.format(run))
+

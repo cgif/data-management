@@ -178,7 +178,7 @@ fi
 
 #untar the files required for bcl to cram conversion
 echo "`$NOW` Extracting archive..."
-ssh $SSH_USER@$HOST "tar xf $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar -C $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME"
+ssh $SSH_USER@$HOST "tar xf $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME/$RUN_NAME.tar -C $DATA_VOL_IGF/rawdata/seqrun/bcl/"
 
 
 #after getting the necessary files, we can now delete the .tar and .md5 of that run

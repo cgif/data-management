@@ -81,7 +81,16 @@ echo -n "" > $CUSTOMERS_RUNS_FILE
 #get the position in the sample_sheet of sample_project column
 project_position=`cat $SAMPLE_SHEET_PREFIX.csv| grep Sample_Project | awk -F, '{for(i=1;i<=NF;i++){if($i=="Sample_Project")print i;}}'`
 
-for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |awk -F',' 'BEGIN{data=0}{if($0 ~ /^[Data]/){data=1}{ if( data >= 1){ print $7}}}'|grep -v -e "Sample_Project" | sort -u |sed 1d`
+# get the project column from sample sheet
+sample_project_col=0
+sample_project_col=`grep Sample_Project $SAMPLE_SHEET_PREFIX.csv | awk -F',' -v tag='Sample_Project' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
+
+if [ $sample_project_col -eq 0 ]; then
+  echo 'project column not found in samplesheet'
+  exit 1
+fi
+
+for project_info in `cat $SAMPLE_SHEET_PREFIX.csv |awk -F',' -v col=$sample_project_col 'BEGIN{data=0}{if($0 ~ /^[Data]/){data=1}{ if( data >= 1){ print $col}}}'|grep -v -e "Sample_Project" | sort -u |sed 1d`
 do
 	#for TEST
 	#echo "$project_info PROJECT INFO FILE"

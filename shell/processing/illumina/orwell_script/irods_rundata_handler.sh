@@ -119,8 +119,11 @@ if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 	fi
 
 #creates TAR archive
+cd $PATH_SEQRUNS_DIR
+
+tar hcf $TRANSFER_DIR/$RUN_NAME.tar $RUN_NAME
+
 cd $TRANSFER_DIR
-tar hcf $TRANSFER_DIR/$RUN_NAME.tar $PATH_SEQRUNS_DIR/$RUN_NAME
 
 #generate an md5 checksum for the tarball
 #need to change to location of archive to generate md5

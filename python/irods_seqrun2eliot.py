@@ -43,8 +43,11 @@ for run_id in ((x for x in os.listdir(seq_run_dir) if os.path.isdir(os.path.join
 # check current process list
 process_list=Popen(['ps','-ef'], stdout=PIPE)
 matched_process_pipe=Popen(['grep', irods_handler_script_basename], stdin=process_list.stdout, stdout=PIPE)
+filtered_process_pipe=Popen(['grep','-v','grep'],stdin=matched_process_pipe.stdout, stdout=PIPE)
 process_list.stdout.close()
-matched_process=matched_process_pipe.communicate()[0]
+matched_process_pipe.stdout.close()
+
+matched_process=filtered_process_pipe.communicate()[0]
 
 # submit job only if new runs found and 
 if len(new_run)>0 and len(matched_process)==0:

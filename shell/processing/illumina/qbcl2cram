@@ -940,41 +940,34 @@ function popolateDB {
         echo $job_id >> $SETUP_LOG
 }
 						
-#get run name, run date and flow cell ID
+# Get run name, run date and flow cell ID
 
 SEQRUN_NAME=`basename $INPUT_SEQRUN_DIR`
 SEQRUN_DATE=`echo $SEQRUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;
 FLOWCELL_ID=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if(!($prefix =~ /-/)){ $prefix=~s/^[AB]//; } print $prefix'`
-
 CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
 
-
-#DEPLOYMENT STRUCTURE
-#creates deployment results structure on eliot webserver
+# Creates deployment results structure on eliot webserver
 while read row
 do
         project_tag=`echo $row|cut -d ',' -f1`
-        #better to do on cx1 on the cluster
-        #checks if the project directory already exists in the web server
+
+        # Checks if the project directory already exists in the web server
 	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]" < /dev/null ;then
                	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
-		#if fastq directory already exists must add the new files there
-		#ssh $DEPLOYMENT_SERVER "rm $DEPLOYMENT_PATH/$project_tag/fastq"
 	else
-		#creates password proctected project_tag dir
+		# Creates password proctected project_tag dir
 		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
 		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag" < /dev/null
 	fi
-	#added in any case I write the secure files
+
+	# Added files for secure access
         project_usr=`echo $row|cut -d ',' -f3`
-        #for Test
-        #echo "USER: $project_usr"
         project_passwd=`echo $row|cut -d ',' -f4`
-        #for Test
-        #echo "PASSW: $project_passwd"
 	cp $HTACCESS_TML $HTACCESS
 	cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
-	#configure .htaccess
+
+	# Configure .htaccess
 	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
 	sed -i -e "s/#customerUsername/$project_usr/" $HTACCESS
 	scp $HTACCESS $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/$project_tag
@@ -982,18 +975,18 @@ do
 	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS" < /dev/null
 	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD" < /dev/null
 	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd" < /dev/null
-	# now remove local password protection file
+
+	# Remove local password protection file
 	rm $HTACCESS
 	rm ${HTPASSWD}.$project_tag
 done <$CUSTOMERS_RUNS_FILE
 
-#extract sample sheet name from run name:
+# Extract sample sheet name from run name:
 #HiSeq run: the sample sheet is named after the flowcell ID; the flowcell ID
 #is the last token of the run name preceeded by A or B depending on wether the
 #flow cell was run as flowcell A or B on the machine: <[A|B]><flowcell_id>.csv
 #MiSeq run: MiSeq runs are detected by the hyphen in the last token of the run name;
 #for MiSeq runs the sample sheet is named SampleSheet.csv 
-#SAMPLE_SHEET_PREFIX=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if($prefix =~ /-/){ $prefix=SampleSheet;  }else{ $prefix=~s/^[AB]//; } print $prefix'`
 
 PATH_RUN_DIR_BCL2FASTQ=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
 PATH_RESULTS_DIR_BCL2FASTQ=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY				
@@ -1006,7 +999,7 @@ chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
 #we need a bcl2fastq job-list file for split_Fastq_dependencies, but MOST IMPORTANTLY, knowing the lane that belonged to a certain bcl2fastq job enables
 #us to know which samples are in that lane; i.e, correspond bcl2fast dependency with the respective samples
 
-#initialise job ID lisr for split fastq dependencies
+# Job ID lisr for split fastq dependencies
 BCL2FASTQ_JOB_ID_LIST=$PATH_RUN_DIR_BCL2FASTQ/bcl2fastq.$SEQRUN_NAME.job_id_list.csv
 echo -n "" > $BCL2FASTQ_JOB_ID_LIST	
 
@@ -1014,89 +1007,44 @@ echo -n "" > $BCL2FASTQ_JOB_ID_LIST
 # BCL2FASTQ RUNS
 ################
 
-#get lanes
-#MiSeq sample sheets are detected by the missing "Lane" column.
-#If the column is not present it is assumed that the sample sheet is a MiSeq sample sheet and lane equals 1, should be file for NextSeq too
-# Rewriting samplesheet processing in python
+# Get lanes
 LANES=`cut -f1 -d ',' $INPUT_SEQRUN_DIR/SampleSheet.csv | perl -e 'while(<>){ if(/\[Data\]/){ $_=<>; if(/^Lane/){ while(<>){ print; }} else { print "1\n"; } }}' | sort | uniq`
 
-## parse sample sheet into format compatible with bcl2fastq format
-## in case the sample sheet has been processed on Windows.. .
+## Convert sample sheet
 dos2unix $INPUT_SEQRUN_DIR/SampleSheet.csv
 
-## convert sample sheet
 PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 
-## new samplesheet reformat script
+## Samplesheet reformat
 $BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED
 
-## $BASEDIR/reformatSampleSheet.pl $PATH_SAMPLE_SHEET $PATH_SAMPLE_SHEET_REFORMATTED
-##  gets the lanes where single index is used in mixed indexes run
-## remove second no index (it effects only mixed indexes run)
-
-#mixedIndexLanes=`cat $PATH_SAMPLE_SHEET_REFORMATTED | grep ".*[A|C|G|T]-NNNNNNNN" | cut -d "," -f 2| sort | uniq |  perl -pe 's/\s/-/g'`
-#echo "mixedIndexLanes= $mixedIndexLanes"
-
-## reads from RunInfo if it is Single-Read or Paired-End Sequencing RUN 
+## Check RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
 
-## get sequencing type for following mapping
+## Get sequencing type for following mapping
 sequence_type=`echo $PATH_SAMPLE_SHEET_REFORMATTED | cut -f4 -d ',' | cut -f3 -d ':' | sort | uniq`
 echo "sequence_type=$sequence_type"
 
-#sed -i 's/\([A|C|G|T]\+\)N*\(-*\)\([A|C|G|T]*\)N*/\1\2\3/g' $PATH_SAMPLE_SHEET_REFORMATTED
-#sed -i 's/-,/,/g' $PATH_SAMPLE_SHEET_REFORMATTED
-
-## create the appropriate index for lane statistics
+## Create the appropriate index for lane statistics
 cp $TEMPLATE_PATH/lanes.htm $PATH_RUN_DIR_BCL2FASTQ/index.html
 chmod 770 $PATH_RUN_DIR_BCL2FASTQ/index.html
 
-# removing previous sub samplesheets
-rm ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
+# Removing previous sub samplesheets
+rm -f ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
 
-# generate current sub samplesheets
+## Generate current sub samplesheets
+###################################
 $BASE_PYTHON_DIR/scripts/SampleSheet/divide_samplesheet.py --samplesheet_file $PATH_SAMPLE_SHEET_REFORMATTED --output_dir $PATH_RUN_DIR_BCL2FASTQ
 
-
+## Run BCL2FASTQ per lane
+########################
 for LANE in $LANES
 do
-#	
-	#min_idx_length=100
-        #data_block=0             ## new samplesheet contain extra headers
-	#while read line
-        #do
-        #        if [[ $line =~ '[Data]'*]]
-        #        then
-        #          data_block=1
-                  
-        #          continue
-        #        fi
-        #        if [ $data_block == 1 ]
-        #        then
-	#          sample_lane=`echo $line | cut -f2 -d ',' | perl -pe 's/\s//g'`
-	#	  if [ $sample_lane == $LANE ]
-	#	  then
-	#	  	#adapter_type=`echo $line  | cut -d ',' -f4|cut -d ':' -f4 | perl -pe 's/\s//g'` 	
-	#		#index=`echo $line | cut -f5 -d ',' | perl -pe 's/\s//g'`
-	#		#min_idx_length=${#index}
-	#		## generate SampleSheet for each different index length
-	#		echo $line >>   ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_${min_idx_length}
-	#       	  fi
-        #        fi
-	#done <$PATH_SAMPLE_SHEET_REFORMATTED
-
-	#header=`head -1 $PATH_SAMPLE_SHEET_REFORMATTED`	
-	#sed -i '1s/^/'$header'\n/'  ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_*
-
-	# foreach different SampleSheet submit bcl2fastq job (different mask)
 	for SampleSheet in `ls --color=never ${PATH_SAMPLE_SHEET_REFORMATTED}_${LANE}_*`
 	do
-		#lane_idx_length=`echo $SampleSheet | cut -d "/" -f9 | cut -d "_" -f2,3`
 		lane_idx_length=`echo $SampleSheet | xargs -i basename {} | cut -d "_" -f2,3`
-		#mylane=`echo $lane_idx_length | cut -d "_" -f1`
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
-		#submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
                 adapter_type=''
                 mixedIndexLanes=''
 		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
@@ -1107,15 +1055,16 @@ sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html
 cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_REFORMATTED
 
 # DEPLOYS FASTQ ON IRODS
+########################
 submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 # FASTQC RUNS
 #############
 submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
-#exit 0
+# POPULATE DB
+##############
 popolateDB
-
 
 # MAPPING RUNS
 ##############

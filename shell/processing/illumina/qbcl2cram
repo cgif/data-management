@@ -40,8 +40,6 @@ HTPASSWD_TML=$TEMPLATE_PATH/htpasswd.tml
 # Adding new parameters for bcl2fastq v2
 WALLTIME_HOURS_PER_JOB_BCL2FASTQ=72
 TMP_SPACE_GB_BCL2FASTQ=100
-## THREADS_PER_RUN_BCL2FASTQ=2                    ## this option doesn't exists anymore
-## PATH_ADAPTER_DIR=$BASEDIR/../../../resources    ## this option doesn't exists anymore
 BCL2FASTQ_LOADING_THREADS=1
 BCL2FASTQ_PROCESSING_THREADS=1
 BCL2FASTQ_WRITING_THREADS=1
@@ -80,8 +78,6 @@ BWA_VERSION=0.7.5a
 SERP_SCRIPT=$BASEDIR/serp.pl
 SERP_DEPENDENCIES="afterany"
 
-#SPLIT_SCRIPT
-#SPLIT_SCRIPT_DIR=$BASEDIR/split_fastq.sh
 
 #COMMAND LINE ARGS : Legacy parameters
 ##################
@@ -1017,7 +1013,7 @@ PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 
 ## Samplesheet reformat
-$BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED
+$BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED -f $INPUT_SEQRUN_DIR/RunInfo.xml
 
 ## Check RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`

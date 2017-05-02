@@ -39,6 +39,7 @@ HTPASSWD_TML=$TEMPLATE_PATH/htpasswd.tml
 # BCL2FASTQ
 # Adding new parameters for bcl2fastq v2
 WALLTIME_HOURS_PER_JOB_BCL2FASTQ=72
+MEMORY_PER_BCL2FASTQ_JOB=10000mb
 TMP_SPACE_GB_BCL2FASTQ=100
 BCL2FASTQ_LOADING_THREADS=1
 BCL2FASTQ_PROCESSING_THREADS=1
@@ -134,7 +135,7 @@ function submitbcl2fastqJobs {
 	
 
  	#make bases mask pass also mixedIndex information
-        local_bases_mask=`$BASE_PYTHON_DIR/scripts/basesMask/makeBasesMask.py --samplesheet_file $path_sample_sheet --runinfo_file $INPUT_SEQRUN_DIR/RunInfo.xml --read_offset $READOFFSET --index_offset $INDEXOFFSET`
+        local bases_mask=`python $BASE_PYTHON_DIR/scripts/basesMask/makeBasesMask.py --samplesheet_file $path_sample_sheet --runinfo_file $INPUT_SEQRUN_DIR/RunInfo.xml --read_offset $READOFFSET --index_offset $INDEXOFFSET`
 	echo "Sample sheet passed to make mask $path_sample_sheet"
 	
 	#create summary directory on deployment server
@@ -150,6 +151,7 @@ function submitbcl2fastqJobs {
 
         total_threads=`expr $BCL2FASTQ_LOADING_THREADS + $BCL2FASTQ_PROCESSING_THREADS + $BCL2FASTQ_WRITING_THREADS`
 	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB_BCL2FASTQ/" $bcl2fastq_script
+	sed -i -e "s/#required_memory/$MEMORY_PER_BCL2FASTQ_JOB/" $bcl2fastq_script
 	sed -i -e "s/#threads/$total_threads/" $bcl2fastq_script
 	sed -i -e "s/#loading_threads/$BCL2FASTQ_LOADING_THREADS/" $bcl2fastq_script
 	sed -i -e "s/#processing_threads/$BCL2FASTQ_PROCESSING_THREADS/" $bcl2fastq_script
@@ -1048,7 +1050,9 @@ do
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
                 adapter_type=''
                 mixedIndexLanes=''
-		#submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
+		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
+		echo "submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes"
+                exit 1
 	done;
 done
 sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 

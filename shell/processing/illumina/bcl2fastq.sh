@@ -53,7 +53,7 @@ ILANE=#ilane
 
 mkdir -p $TMPDIR/$RUN_NAME/$ILANE/fastq
 
-#stage required files
+# Stage required files
 #####################
 python $BASE_PYTHON_DIR/scripts/file_copy/moveFilesForDemultiplexing.py -i $PATH_SEQRUN_DIR -o $TMPDIR/$RUN_NAME/$ILANE -s $PATH_SAMPLE_SHEET -r $PATH_SEQRUN_DIR/RunInfo.xml
 
@@ -72,16 +72,21 @@ bcl2fastq \
 --auto-set-to-zero-barcode-mismatches
 
 
-#undetermined indices fastqs
+# Undetermined indices fastqs
 ############################
 
-## Not copying Undetermined fastq files to any projects
+mkdir -m 770 -p $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane${ILANE}
+
+for FAILED_FASTQ in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/ -mindepth 1 -maxdepth 1 -type f -name 'Undetermined_*.fastq.gz' -exec basename {} \;`
+do
+   cp $TMPDIR/$RUN_NAME/${ILANE}/fastq/$FAILED_FASTQ $PATH_RAWDATA_DIR/seqrun/fastq/$RUN_NAME/Undetermined_indices/Sample_lane${ILANE}/
+done
 
 
-#sample fastqs
+# Sample fastqs
 ##############
 
-#iterate over project folders
+# Iterate over project folders
 for PROJECT_DIR in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do	
         if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then

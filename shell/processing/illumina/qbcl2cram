@@ -943,6 +943,9 @@ SEQRUN_DATE=`echo $SEQRUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_
 FLOWCELL_ID=`echo $SEQRUN_NAME | cut -f4 -d '_' | perl -e '$prefix=<>; chomp($prefix); if(!($prefix =~ /-/)){ $prefix=~s/^[AB]//; } print $prefix'`
 CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
 
+# Goto seqrun dir
+cd $INPUT_SEQRUN_DIR
+
 # Creates deployment results structure on eliot webserver
 while read row
 do
@@ -973,8 +976,8 @@ do
 	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd" < /dev/null
 
 	# Remove local password protection file
-	rm $HTACCESS
-	rm ${HTPASSWD}.$project_tag
+	rm -f $HTACCESS
+	rm -f ${HTPASSWD}.$project_tag
 done <$CUSTOMERS_RUNS_FILE
 
 # Extract sample sheet name from run name:
@@ -991,6 +994,8 @@ PATH_RAWDATA_DIR=$DATA_VOL_IGF/rawdata
 mkdir -m 770 -p $PATH_RUN_DIR_BCL2FASTQ
 chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
 
+# Goto BCl2FAST dir
+cd $PATH_RUN_DIR_BCL2FASTQ
 
 #we need a bcl2fastq job-list file for split_Fastq_dependencies, but MOST IMPORTANTLY, knowing the lane that belonged to a certain bcl2fastq job enables
 #us to know which samples are in that lane; i.e, correspond bcl2fast dependency with the respective samples
@@ -1013,7 +1018,7 @@ PATH_SAMPLE_SHEET=$INPUT_SEQRUN_DIR/SampleSheet.csv
 PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 
 ## Samplesheet reformat
-$BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED -f $INPUT_SEQRUN_DIR/RunInfo.xml
+python $BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED -f $INPUT_SEQRUN_DIR/RunInfo.xml
 
 ## Check RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`
@@ -1031,7 +1036,7 @@ rm -f ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
 
 ## Generate current sub samplesheets
 ###################################
-$BASE_PYTHON_DIR/scripts/SampleSheet/divide_samplesheet.py --samplesheet_file $PATH_SAMPLE_SHEET_REFORMATTED --output_dir $PATH_RUN_DIR_BCL2FASTQ
+python $BASE_PYTHON_DIR/scripts/SampleSheet/divide_samplesheet.py --samplesheet_file $PATH_SAMPLE_SHEET_REFORMATTED --output_dir $PATH_RUN_DIR_BCL2FASTQ
 
 ## Run BCL2FASTQ per lane
 ########################
@@ -1043,7 +1048,7 @@ do
 		sed -i -e "s/#addRow/<br> <li> LANE ${mylane} <ul> <li><a href=lane${lane_idx_length}\/All.htm>All<\/a><\/li> <li><a href=lane${lane_idx_length}\/Demultiplex_Stats.htm>Demultiplex_Stats<\/a><\/li> <li><a href=lane${lane_idx_length}\/IVC.htm>IVC<\/a><\/li> <\/ul> <\/li>\n#addRow/" $PATH_RUN_DIR_BCL2FASTQ/index.html 
                 adapter_type=''
                 mixedIndexLanes=''
-		submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
+		#submitbcl2fastqJobs $INPUT_SEQRUN_DIR $SampleSheet $lane_idx_length $adapter_type $mixedIndexLanes
 	done;
 done
 sed -i -e "s/#addRow//" $PATH_RUN_DIR_BCL2FASTQ/index.html 
@@ -1052,17 +1057,17 @@ cat ${PATH_SAMPLE_SHEET_REFORMATTED}_*_* | sort -n | uniq  > $PATH_SAMPLE_SHEET_
 
 # DEPLOYS FASTQ ON IRODS
 ########################
-submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
+#submitIrodsDeployFastq $PATH_SAMPLE_SHEET_REFORMATTED
 
 # FASTQC RUNS
 #############
-submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
+#submitfastqcJobs $PATH_SAMPLE_SHEET_REFORMATTED
 
 # POPULATE DB
 ##############
-popolateDB
+#popolateDB
 
 # MAPPING RUNS
 ##############
-submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
+#submitMappingJob $PATH_SAMPLE_SHEET_REFORMATTED
 

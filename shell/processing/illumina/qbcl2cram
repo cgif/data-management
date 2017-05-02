@@ -148,10 +148,12 @@ function submitbcl2fastqJobs {
 	local bcl2fastq_script=$PATH_RUN_DIR_BCL2FASTQ/bcl2Fastq.$SEQRUN_NAME.${lane}.sh
 	cp $BASEDIR/bcl2fastq.sh $bcl2fastq_script
 	chmod 770 $bcl2fastq_script
-
+        echo $BASE_PYTHON_DIR
         total_threads=`expr $BCL2FASTQ_LOADING_THREADS + $BCL2FASTQ_PROCESSING_THREADS + $BCL2FASTQ_WRITING_THREADS`
+
 	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB_BCL2FASTQ/" $bcl2fastq_script
 	sed -i -e "s/#required_memory/$MEMORY_PER_BCL2FASTQ_JOB/" $bcl2fastq_script
+	sed -i -e "s|#base_python_dir|$BASE_PYTHON_DIR|" $bcl2fastq_script
 	sed -i -e "s/#threads/$total_threads/" $bcl2fastq_script
 	sed -i -e "s/#loading_threads/$BCL2FASTQ_LOADING_THREADS/" $bcl2fastq_script
 	sed -i -e "s/#processing_threads/$BCL2FASTQ_PROCESSING_THREADS/" $bcl2fastq_script
@@ -176,8 +178,6 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#mixedIndexes/$mixedIndexes/" $bcl2fastq_script
 	sed -i -e "s/#ilane/$lane/" $bcl2fastq_script
 	sed -i -e "s/#removeAdaptors/$REMOVE_ADAPTORS/" $bcl2fastq_script
-	sed -i -e "s/#base_python_dir/$BASE_PYTHON_DIR/" $bcl2fastq_script
-        
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 

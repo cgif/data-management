@@ -155,11 +155,12 @@ if [ $retval -ne 0 ]; then
   exit 1
 fi
 
-# Check transferred files
+# Check transferred files, need to convert it to queue job
+RUN_NAME_CHECKED=${RUN_NAME_LIST}_checked
 echo -n "`$NOW` Verifying md5 checksum..."
-MD5_STATUS=`ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum --quiet -c $RUN_NAME_LIST|wc -l`
+ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum --quiet -c $RUN_NAME_LIST > $RUN_NAME_CHECKED"
 
-if [ $MD5_STATUS -gt 0 ]; then
+if [ -s $RUN_NAME_CHECKED ]; then
   echo -e "subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
   exit 1
 fi

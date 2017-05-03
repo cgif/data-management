@@ -92,7 +92,7 @@ do
         if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then
 	  mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
 	  chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
-          cp $PATH_SAMPLESHEET $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
+          cp $PATH_SAMPLE_SHEET $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
           chmod 660 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
 
 	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
@@ -101,10 +101,10 @@ do
 		SAMPLE_ID=$SAMPLE_DIR_NAME
 		echo "`$NOW`$SAMPLE_ID"
 
-                               # hack for getting sample name
-                local sample_name_col=0
-                local sample_id_col=0
-                local rowcount=0
+                # hack for getting sample name
+                sample_name_col=0
+                sample_id_col=0
+                rowcount=0
 
                 for sampleSheetRow in `awk 'BEGIN{data_block=0}{if($0 ~ /^\[Data\]/){data_block=1; next}if(data_block==1){print $0}}' $PATH_SAMPLE_SHEET`
                 do
@@ -115,8 +115,8 @@ do
                       continue
                     fi
                     if [ $sample_name_col -gt 0 ] && [ $sample_id_col -gt 0 ]; then
-                      local sample_name_val=`echo $sampleSheetRow |cut -d',' -f${sample_name_col}`
-                      local sample_id_val=`echo $sampleSheetRow |cut -d',' -f${sample_id_col}`
+                      sample_name_val=`echo $sampleSheetRow |cut -d',' -f${sample_name_col}`
+                      sample_id_val=`echo $sampleSheetRow |cut -d',' -f${sample_id_col}`
 
                       if [ $sample_id_val == $SAMPLE_ID ]; then
                         SAMPLE_NAME=$sample_name_val

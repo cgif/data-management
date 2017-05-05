@@ -1,9 +1,10 @@
-To: #customerEmail
-Cc: igf@imperial.ac.uk
+To: igf@imperial.ac.uk
 Subject: [Imperial BRC Genomics Facility] Sequencing data available for download - #projectName
 From: igf@imperial.ac.uk
 MIME-Version: 1.0
 Content-Type: text/plain
+
+EMAIL FOR #customerEmail
 
 Dear #customerName,
 
@@ -13,7 +14,7 @@ http://eliot.med.ic.ac.uk:8080/idrop-web
 
 Follow this path
 
-#projectName/fastq/#projectRunDate/#projectRunDate.tar.gz
+#projectName/fastq/#projectRunDate/
 
 User Name: #customerUsername
 Password: #passwd

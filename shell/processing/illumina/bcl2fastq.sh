@@ -11,7 +11,7 @@
 #PBS -M igf@imperial.ac.uk
 #PBS -j oe
 
-#PBS -q #queue
+#PBS -q pqcgi
 
 module load bcl2fastq/#bcl2FastqVersion
 
@@ -92,7 +92,10 @@ do
         if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then
 	  mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
 	  chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
-          cp $PATH_SAMPLE_SHEET $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
+
+          # filter samplesheet and only keep lines for matching project
+          awk -v tag=$PROJECT_DIR -v filter="Sample_ID" 'BEGIN{line_count=0}{if(line_count == 0){print};if($0 ~ filter){line_count=1}else{if( $0 ~ tag){print}}}' $PATH_SAMPLE_SHEET > $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
+
           chmod 660 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
 
 	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
@@ -160,7 +163,7 @@ do
 		do
 			#...make fastq output file name
 			FASTQ_FILE=`basename $FASTQ_FILE`
-                        FASTQ_NAME=`echo $FASTQ_FILE | perl -pe "s/^${SAMPLE_NAME}_/${RUN_NAME}_/"`
+                        FASTQ_NAME="${RUN_NAME}_${FASTQ_FILE}"
                       
                         mv $FASTQ_FILE $FASTQ_NAME
 			md5sum $FASTQ_NAME > $FASTQ_NAME.md5

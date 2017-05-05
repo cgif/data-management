@@ -79,6 +79,9 @@ BWA_VERSION=0.7.5a
 SERP_SCRIPT=$BASEDIR/serp.pl
 SERP_DEPENDENCIES="afterany"
 
+#SLACK
+SLACK_URL=https://slack.com/api/chat.postMessage
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
 
 #COMMAND LINE ARGS : Legacy parameters
 ##################
@@ -94,6 +97,7 @@ case "$option" in
 	t) USE_IRODS="$OPTARG";;
 	a) REMOVE_ADAPTORS="$OPTARG";;
 	p) BASE_PYTHON_DIR="$OPTARG";;
+	s) SLACK_TOKEN="$OPTARG";;
 	b) REMOVE_BAMS="$OPTARG";;
 	h) cat "$USAGE"; exit 0;;
 	[?]) cat "$USAGE"; exit 1;;
@@ -136,7 +140,9 @@ function submitbcl2fastqJobs {
 
  	#make bases mask pass also mixedIndex information
         local bases_mask=`python $BASE_PYTHON_DIR/scripts/basesMask/makeBasesMask.py --samplesheet_file $path_sample_sheet --runinfo_file $INPUT_SEQRUN_DIR/RunInfo.xml --read_offset $READOFFSET --index_offset $INDEXOFFSET`
-	echo "Sample sheet passed to make mask $path_sample_sheet"
+
+	msg="bases mask for run $SEQRUN_NAME, lane $lane is: $bases_mask"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 	
 	#create summary directory on deployment server
 	local bcl2fastq_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY
@@ -178,6 +184,7 @@ function submitbcl2fastqJobs {
 	sed -i -e "s/#mixedIndexes/$mixedIndexes/" $bcl2fastq_script
 	sed -i -e "s/#ilane/$lane/" $bcl2fastq_script
 	sed -i -e "s/#removeAdaptors/$REMOVE_ADAPTORS/" $bcl2fastq_script
+	sed -i -e "s/#slackToken/$SLACK_TOKEN/" $bcl2fastq_script
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	echo -n "`$NOW`submitting bcl2fastq job: " 
@@ -220,7 +227,8 @@ function submitIrodsDeployFastq {
                             chmod 770 $PATH_RUN_DIR_BCL2FASTQ
                             echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
                         else
-                            echo "couldn't identify the sample_col or project_col"
+                            msg="couldn't identify the sample_col or project_col, stopping irods upload"
+                            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
                             exit 1
                         fi
                 done
@@ -267,6 +275,7 @@ function submitIrodsDeployFastq {
                         sed -i -e "s/#projectTag/$project_tag/" $deploy_irods_fastq_script
                         sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $deploy_irods_fastq_script
                         sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
+	                sed -i -e "s/#slackToken/$SLACK_TOKEN/" $deploy_irods_fastq_script
 
                         ####### XXXXXXXXXXX
                         sed -i -e "s/#useIrods/$USE_IRODS/" $deploy_irods_fastq_script

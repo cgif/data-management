@@ -41,6 +41,9 @@ IRODS_PWD=igf
 SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_email.sh
 SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_notification.sh
 
+SLACK_URL=https://slack.com/api/chat.postMessage
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+
 # Set customer info'
 customers_info=`grep -w $PROJECT_TAG $CUSTOMER_FILE_PATH/customerInfo.csv`
 customer_name=`echo $customers_info|cut -d ',' -f2`
@@ -50,14 +53,17 @@ customer_email=`echo $customers_info|cut -d ',' -f5`
 
 if [[ $customer_email != *"@"* ]]; then
         #send email alert...
-        echo -e "subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+        msg="subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi
 
 # Check if is internal customer
 ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
 retval=$?
 if [ $retval -ne 0 ]; then
-    echo "External customer"
+    msg="customer $customer_username dosn't have hpc access"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
     externalUser="Y"
 fi
 
@@ -92,6 +98,9 @@ for lane_dir in `find .  -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do
    seq_run_date_lane=${SEQ_RUN_DATE}_${lane_dir}
    # Create tar files per lane
+   msg="creating tar for ${SEQ_RUN_DATE} ${lane_dir}"
+   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
    tar hcfz ${seq_run_date_lane}.tar.gz  ${lane_dir}
 
    # Generate an md5 checksum for the tarball
@@ -107,17 +116,21 @@ do
      # Set metadata
      imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
 
+     msg="adding files for ${seq_run_date_lane} to irods"
+     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
      # Store file in irods
      iput -k -fP -N 4 -X $PATH_TO_DESTINATION/$SEQ_RUN_DATE/restartFile.$lane_dir --retries 3 -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE/${seq_run_date_lane}.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
      retval=$?
      if [ $retval -ne 0 ]; then
-       echo "`$NOW` ERROR registering sequencing data in IRODS"
-       echo -e "subject:Sequencing Data for project $PROJECT_TAG Processing Error. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+       msg="subject:Sequencing Data for project $PROJECT_TAG Processing Error. Processing aborted."
+       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
        exit 1
      fi
    else
-      # No other option for file transfer
+      msg="No support for non-irods file transfer"
+      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
    fi
 
@@ -192,4 +205,7 @@ else
         sendmail -t < $RUN_DIR_BCL2FASTQ/$discard_mail
         echo "NO SEND_EMAIL"
 fi
+
+msg="Data is available for $customer_email, mail instructions sent to IGf"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 

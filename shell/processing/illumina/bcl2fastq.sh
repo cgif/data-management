@@ -37,6 +37,10 @@ PATH_RAWDATA_DIR=#pathRawDataDir
 PATH_SAMPLE_SHEET=#pathSampleSheet
 RUN_NAME=#runName
 
+SLACK_URL=https://slack.com/api/chat.postMessage
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+SLACK_TOKEN=#slackToken
+
 RUN_DATE=`echo $RUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;
 
 #extract flowcell ID from run name:
@@ -60,6 +64,9 @@ python $BASE_PYTHON_DIR/scripts/file_copy/moveFilesForDemultiplexing.py -i $PATH
 # Run BC2Fastq
 ###################
 
+msg="started bcl2fastq conversion for $RUN_NAME/$ILANE"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 bcl2fastq \
 --runfolder-dir $TMPDIR/$RUN_NAME/$ILANE \
 --sample-sheet  $PATH_SAMPLE_SHEET \
@@ -71,6 +78,9 @@ bcl2fastq \
 --barcode-mismatches 1 \
 --auto-set-to-zero-barcode-mismatches
 
+
+msg="finished bcl2fastq conversion for $RUN_NAME/$ILANE"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Undetermined indices fastqs
 ############################
@@ -89,6 +99,9 @@ done
 # Iterate over project folders
 for PROJECT_DIR in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do	
+        msg="moving fastq files to $PROJECT_DIR"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
         if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then
 	  mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
 	  chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
@@ -125,18 +138,19 @@ do
                         SAMPLE_NAME=$sample_name_val
                       fi
                     else
-                      echo 'sample id and name column not found'
+                      msg="sample id and name column not found, stopping file move for $PROJECT_DIR"
+                      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
                       exit 1
                     fi
                 done
 
                 if [ ! $SAMPLE_NAME ]; then
-                  echo 'sample name not found'
+                  msg=sample name not found, stopping fastq move for $PROJECT_DIR"
+                  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
                   exit 1
                 fi
 
                 echo "`$NOW`$SAMPLE_NAME"
-
 
 		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
 		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_NAME
@@ -183,8 +197,5 @@ do
 done
 
 
-## adding html for lanes statistics
-######################################
-
-# Not adding any HTML
-
+msg="finished fastq move for $RUN_NAME/$ILANE"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`

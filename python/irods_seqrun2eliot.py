@@ -8,6 +8,7 @@ parser.add_argument('-s','--ssh_user',       required=True, help='Unix user name
 parser.add_argument('-u','--irods_user',     required=True, help='IRODS username')
 parser.add_argument('-p','--irods_pass',     required=True, help='IRODS password')
 parser.add_argument('-i','--input_dir',      required=True, help='Top level file input dir')
+parser.add_argument('-t','--slack_token',    required=True, help='Slack bot token')
 args=parser.parse_args()
 
 ssh_user=args.ssh_user
@@ -16,7 +17,7 @@ irods_user=args.irods_user
 irods_pass=args.irods_pass
 base_code_dir=args.base_code_dir
 base_python_dir=args.base_python_dir
-
+slack_token=args.slack_token
 
 run_list_file=os.path.join(input_dir,'RUN_LIST')
 seq_run_dir=os.path.join(input_dir,'illumina')
@@ -55,6 +56,6 @@ if len(new_run)>0 and len(matched_process)==0:
      rta_file_path=os.path.join(seq_run_dir,run,'RTAComplete.txt')
      if os.path.exists(rta_file_path):
        orwell_run_dir=os.path.join(seq_run_dir,run)
-       call([irods_handler_script, orwell_run_dir, irods_user, irods_pass, ssh_user, base_python_dir, 'T', 'T', 'T']) # legacy parameters
+       call([irods_handler_script, orwell_run_dir, irods_user, irods_pass, ssh_user, base_python_dir, 'T', 'T', 'T', slack_token]) # legacy parameters
        print('submitting jobs for {0}'.format(run))
 

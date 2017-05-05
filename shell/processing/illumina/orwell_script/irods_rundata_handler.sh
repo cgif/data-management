@@ -22,6 +22,7 @@ BASE_PYTHON_DIR=$5
 USE_IRODS=$6
 REMOVE_ADAPTORS=$7
 REMOVE_BAMS=$8
+SLACK_TOKEN=$9
 
 RUN_NAME=`basename $INPUT_SEQRUN`
 PATH_SEQRUNS_DIR=`dirname $INPUT_SEQRUN`
@@ -40,6 +41,9 @@ DEPLOYMENT_HOST=eliot.med.ic.ac.uk
 DEPLOYMENT_PATH=/www/html/report/project
 CUSTOMERS_FILEPATH=/home/igf/docs/igf/users
 CUSTOMERS_RUNS_FILE=customerInfo.csv
+
+SLACK_URL=https://slack.com/api/chat.postMessage
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
 
 # Initialise log file
 echo -n "" >> $LOG
@@ -82,7 +86,9 @@ sample_project_col=0
 sample_project_col=`grep Sample_Project $SAMPLE_SHEET_PREFIX.csv | awk -F',' -v tag='Sample_Project' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
 
 if [ $sample_project_col -eq 0 ]; then
-  echo 'project column not found in samplesheet'
+  msg="project column not found in samplesheet for run $RUN_NAME"
+  echo $msg
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
 
@@ -95,18 +101,17 @@ do
 	echo -n $project_tag"," >> $CUSTOMERS_RUNS_FILE
 	customers_info=`grep -w $project_usr $CUSTOMERS_FILEPATH/lims_user.csv`
 	if [[ -z $customers_info ]]; then
-		echo "`$NOW` ERROR: customer for project $project_tag is unknown"
-		# Send email alert...
-		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+		
+                msg="subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted."
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 		exit 1
 	fi
 	echo $customers_info >> $CUSTOMERS_RUNS_FILE
 done
 if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 	then
-		echo "`$NOW` ERROR: Required file $CUSTOMERS_RUNS_FILE  missing... aborting"
-		# Send email alert...
-		echo -e "subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+                msg="subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted."
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 		exit 1
 	fi
 
@@ -128,10 +133,15 @@ cd $TRANSFER_DIR
 
 # Create the run-specific directory
 PATH_TARGET_DIR=$DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME
-echo "`$NOW` Creating target directory $PATH_TARGET_DIR on $HOST..."
+msg="`$NOW` Creating target directory $PATH_TARGET_DIR on $HOST..."
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR
 
 # Use rsync for file transfer
+msg="Start transferring files from Orwell for run $RUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 rsync --exclude Thumbnail_Images \
       --exclude Images \
       --exclude Config \
@@ -143,27 +153,36 @@ rsync --exclude Thumbnail_Images \
 
 retval=$?
 if [ $retval -ne 0 ]; then
-  echo "`$NOW` ERROR registering run data in $TRANSFER_DIR/$RUN_NAME
+  msg="`$NOW` ERROR registering run data in $TRANSFER_DIR/$RUN_NAME"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
+
+msg="finished data transfer for run $RUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Transfer the files list to hpc
 rsync -aPce ssh $TRANSFER_DIR/$RUN_NAME_LIST $SSH_USER@$HOST:$PATH_TARGET_DIR
 retval=$?
 if [ $retval -ne 0 ]; then
-  echo "`$NOW` ERROR registering md5 file in $TRANSFER_DIR/$RUN_NAME
+  msg="`$NOW` ERROR registering md5 file in $TRANSFER_DIR/$RUN_NAME"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
 
 # Check transferred files, need to convert it to queue job
 RUN_NAME_CHECKED=${RUN_NAME_LIST}_checked
-echo -n "`$NOW` Verifying md5 checksum..."
+
 ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum --quiet -c $RUN_NAME_LIST > $RUN_NAME_CHECKED"
 
 if [ -s $RUN_NAME_CHECKED ]; then
-  echo -e "subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted." | sendmail -f igf -F "Imperial BRC Genomics Facility" "igf@ic.ac.uk"
+  msg="subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
+
+msg="file md5 check post transfer has finished for run $RUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Mark sequencing run as known
 echo $RUN_NAME >> $TRANSFER_DIR/../seqrun/RUN_LIST
@@ -172,7 +191,9 @@ echo $RUN_NAME >> $TRANSFER_DIR/../seqrun/RUN_LIST
 cd $WORKING_DIR		
  
 # Execute the bcl to cram script
-echo "`$NOW` Starting BCL-to-CRAM conversion..."
-ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS -p $BASE_PYTHON_DIR"
+msg="running hpc jobs for $RUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
+ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS -p $BASE_PYTHON_DIR -s $SLACK_TOKEN"
 
 

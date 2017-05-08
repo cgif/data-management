@@ -43,6 +43,11 @@ SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_n
 
 SLACK_URL=https://slack.com/api/chat.postMessage
 SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+SLACK_TOKEN=#slackToken
+
+# Load IRODS
+module load irods/4.2.0
+iinit $IRODS_USER
 
 # Set customer info'
 customers_info=`grep -w $PROJECT_TAG $CUSTOMER_FILE_PATH/customerInfo.csv`
@@ -86,9 +91,6 @@ if [ "$USE_IRODS" = "T" ]; then
   ichmod -r inherit /igfZone/home/$customer_username
 fi
 
-# Adding FASTQ FILES To woolfResc
-module load irods/4.2.0
-iinit igf
 
 # Goto the destination dir
 cd $PATH_TO_DESTINATION/$SEQ_RUN_DATE
@@ -98,14 +100,14 @@ for lane_dir in `find .  -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do
    seq_run_date_lane=${SEQ_RUN_DATE}_${lane_dir}
    # Create tar files per lane
-   msg="creating tar for ${SEQ_RUN_DATE} ${lane_dir}"
+   msg="creating tar for ${SEQ_RUN_NAME} ${PROJECT_TAG} ${SEQ_RUN_DATE} ${lane_dir}"
    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
-   tar hcfz ${seq_run_date_lane}.tar.gz  ${lane_dir}
+   tar hcf $TMPDIR/${seq_run_date_lane}.tar  -C $PATH_TO_DESTINATION/$SEQ_RUN_DATE ${lane_dir}
 
    # Generate an md5 checksum for the tarball
-   md5sum ${seq_run_date_lane}.tar.gz > ${seq_run_date_lane}.tar.gz.md5
-   chmod 664 ${seq_run_date_lane}.tar.gz ${seq_run_date_lane}.tar.gz.md5
+   md5sum $TMPDIR/${seq_run_date_lane}.tar > $TMPDIR/${seq_run_date_lane}.tar.md5
+   chmod 664 $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 
    if [ "$USE_IRODS" = "T" ]; then
      # Creates the deploy structure
@@ -120,7 +122,7 @@ do
      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
      # Store file in irods
-     iput -k -fP -N 4 -X $PATH_TO_DESTINATION/$SEQ_RUN_DATE/restartFile.$lane_dir --retries 3 -R woolfResc $PATH_TO_DESTINATION/$SEQ_RUN_DATE/${seq_run_date_lane}.tar.gz  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+     iput -k -fP -N 4 -X $PATH_TO_DESTINATION/$SEQ_RUN_DATE/restartFile.$lane_dir --retries 3 -R woolfResc $TMPDIR/${seq_run_date_lane}.tar  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
      retval=$?
      if [ $retval -ne 0 ]; then
@@ -135,15 +137,15 @@ do
    fi
 
    # Add md5 value to irods
-   iput -fP -R woolfResc $PATH_TO_DESTINATION/${seq_run_date_lane}.tar.gz.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+   iput -fP -R woolfResc $TMPDIR/${seq_run_date_lane}.tar.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
    # Set expire date
-   isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar.gz '+30d'
-   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar.gz "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
-   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar.gz retention "30" "days"
+   isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar '+30d'
+   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
+   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar retention "30" "days"
 
    # Remove tar files
-   rm -f ${seq_run_date_lane}.tar.gz ${seq_run_date_lane}.tar.gz.md5
+   rm -f $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 done
 
 # Change dir permission

@@ -58,7 +58,7 @@ customer_email=`echo $customers_info|cut -d ',' -f5`
 
 if [[ $customer_email != *"@"* ]]; then
         #send email alert...
-        msg="subject:Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
+        msg="Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi
 
@@ -122,7 +122,7 @@ do
      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
      # Store file in irods
-     iput -k -fP -N 4 -X $PATH_TO_DESTINATION/$SEQ_RUN_DATE/restartFile.$lane_dir --retries 3 -R woolfResc $TMPDIR/${seq_run_date_lane}.tar  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+     iput -k -fP -N 4 -X $TMPDIR/restartFile.$lane_dir --retries 3 -R woolfResc $TMPDIR/${seq_run_date_lane}.tar  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
      retval=$?
      if [ $retval -ne 0 ]; then
@@ -130,26 +130,30 @@ do
        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
        exit 1
      fi
+  
+     # Add md5 value to irods
+     iput -fP -R woolfResc $TMPDIR/${seq_run_date_lane}.tar.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+
+     # Set expire date
+     isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar '+30d'
+     imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
+     imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar retention "30" "days"
+
    else
       msg="No support for non-irods file transfer"
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
    fi
 
-   # Add md5 value to irods
-   iput -fP -R woolfResc $TMPDIR/${seq_run_date_lane}.tar.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
-
-   # Set expire date
-   isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar '+30d'
-   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar "$TODAY - fastq - $PROJECT_TAG" $customer_username $HIGHTLIGHT
-   imeta add -d /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar retention "30" "days"
-
    # Remove tar files
    rm -f $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 done
 
-# Change dir permission
-ichmod -r read $customer_username /igfZone/home/$customer_username/
+if [ "$USE_IRODS" = "T" ];then
+  # Change dir permission
+  ichmod -r read $customer_username /igfZone/home/$customer_username/
+fi
+
 
 # Prepare the email to send to the customer
 customer_mail=customer_mail.$PROJECT_TAG
@@ -208,6 +212,6 @@ else
         echo "NO SEND_EMAIL"
 fi
 
-msg="Data is available for $customer_email, mail instructions sent to IGf"
+msg="Data is available for $SEQ_RUN_NAME $PROJECT_TAG, mail instructions sent to IGF"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 

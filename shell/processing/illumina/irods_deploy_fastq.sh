@@ -42,7 +42,7 @@ SEND_EMAIL_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_email.sh
 SEND_NOTIFICATION_SCRIPT=$MAIL_TEMPLATE_PATH/../shell/processing/illumina/send_notification.sh
 
 SLACK_URL=https://slack.com/api/chat.postMessage
-SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_bot'"
 SLACK_TOKEN=#slackToken
 
 # Load IRODS

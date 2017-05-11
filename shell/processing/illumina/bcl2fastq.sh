@@ -38,7 +38,7 @@ PATH_SAMPLE_SHEET=#pathSampleSheet
 RUN_NAME=#runName
 
 SLACK_URL=https://slack.com/api/chat.postMessage
-SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_bot'"
 SLACK_TOKEN=#slackToken
 
 RUN_DATE=`echo $RUN_NAME | perl -e 'while(<>){ if(/^(\d{2})(\d{2})(\d{2})_/){ print "20$1-$2-$3"; }}'`;

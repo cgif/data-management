@@ -145,10 +145,10 @@ do
             msg="password has been set for non-hpc customer account $customer_username"
             res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh` 
           fi
-        fi
 
-        ichmod -M own igf /igfZone/home/$customer_username
-        ichmod -r inherit /igfZone/home/$customer_username
+          ichmod -M own igf /igfZone/home/$customer_username
+          ichmod -r inherit /igfZone/home/$customer_username
+        fi
 done
 
 if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
@@ -163,14 +163,7 @@ RUN_NAME_LIST="${RUN_NAME}_files_md5"
 cd $PATH_SEQRUNS_DIR
 
 # Preparing lists of files
-find $RUN_NAME/ -type f \
-  -not -path "*/Logs/*" \
-  -not -path "*/Thumbnail_Images/*" \
-  -not -path "*/Config/*" \
-  -not -path "*/PeriodicSaveRates/*" \ 
-  -not -path "*/Recipe/*" \
-  -not -path "*/RTALogs/*" \
-  -not -path "*/Images/*" -exec md5sum {} \; > $TRANSFER_DIR/$RUN_NAME_LIST
+find $RUN_NAME/ -type f -not -path "*/Logs/*" -not -path "*/Thumbnail_Images/*" -not -path "*/Config/*" -not -path "*/PeriodicSaveRates/*" -not -path "*/Recipe/*" -not -path "*/RTALogs/*" -not -path "*/Images/*" -exec md5sum {} \; > $TRANSFER_DIR/$RUN_NAME_LIST
 
 retval=$?
 if [ $retval -ne 0 ]; then

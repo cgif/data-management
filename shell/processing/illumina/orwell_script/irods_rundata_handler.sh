@@ -172,6 +172,12 @@ find $RUN_NAME/ -type f \
   -not -path "*/RTALogs/*" \
   -not -path "*/Images/*" -exec md5sum {} \; > $TRANSFER_DIR/$RUN_NAME_LIST
 
+retval=$?
+if [ $retval -ne 0 ]; then
+  msg="got error while running md5 generation for $RUN_NAME"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+fi
+
 cd $TRANSFER_DIR
 
 # Create the run-specific directory
@@ -239,5 +245,10 @@ msg="running hpc jobs for $RUN_NAME"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS -p $BASE_PYTHON_DIR -s $SLACK_TOKEN"
+retval=$?
+if [ $retval -ne 0 ]; then
+  msg="got error while running hpc job"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+fi
 
 

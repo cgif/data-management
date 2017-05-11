@@ -630,6 +630,9 @@ CUSTOMERS_RUNS_FILE=$INPUT_SEQRUN_DIR/customerInfo.csv
 # Goto seqrun dir
 cd $INPUT_SEQRUN_DIR
 
+msg="started script in hpc for $SEQRUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 # Creates deployment results structure on eliot webserver
 while read row
 do
@@ -637,10 +640,13 @@ do
 
         # Checks if the project directory already exists in the web server
 	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]" < /dev/null ;then
-               	echo "directory " $DEPLOYMENT_PATH/$project_tag " exists.";
+               	msg="directory $DEPLOYMENT_PATH/$project_tag exists, aborting process"
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 	else
 		# Creates password proctected project_tag dir
-		echo "`$NOW` directory " $DEPLOYMENT_PATH/$project_tag " does not exist. Creates password proctected";
+		msg="directory $DEPLOYMENT_PATH/$project_tag does not exist. Creates password proctected access"
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 		ssh $DEPLOYMENT_SERVER "mkdir -m 775 -p $DEPLOYMENT_PATH/$project_tag" < /dev/null
 	fi
 
@@ -649,6 +655,9 @@ do
         project_passwd=`echo $row|cut -d ',' -f4`
 	cp $HTACCESS_TML $HTACCESS
 	cp $HTPASSWD_TML ${HTPASSWD}.$project_tag
+ 
+        msg="created htaccess files for user $project_usr"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 	# Configure .htaccess
 	sed -i -e "s/#project_tag/$project_tag/" $HTACCESS
@@ -658,6 +667,9 @@ do
 	ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$project_tag/$HTACCESS" < /dev/null
 	ssh $DEPLOYMENT_SERVER "chmod 644 $DEPLOYMENT_PATH/$project_tag/$HTPASSWD" < /dev/null
 	ssh $DEPLOYMENT_SERVER "cd $DEPLOYMENT_PATH/$project_tag;htpasswd -bm .htpasswd $project_usr $project_passwd" < /dev/null
+
+        msg="set ftp access for user $project_usr"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 	# Remove local password protection file
 	rm -f $HTACCESS
@@ -703,6 +715,11 @@ PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 
 ## Samplesheet reformat
 python $BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED -f $INPUT_SEQRUN_DIR/RunInfo.xml
+retval=$?
+if [ $retval -ne 0 ]; then
+  msg="got error while running samplesheet reformat script"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+fi
 
 ## Check RunInfo if it is Single-Read or Paired-End Sequencing RUN 
 pairedEnd=`cat $INPUT_SEQRUN_DIR/RunInfo.xml | grep "Read Number=\"4\"" | wc -l`

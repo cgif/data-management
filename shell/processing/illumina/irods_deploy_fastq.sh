@@ -47,7 +47,6 @@ SLACK_TOKEN=#slackToken
 
 # Load IRODS
 module load irods/4.2.0
-iinit $IRODS_USER
 
 # Set customer info'
 customers_info=`grep -w $PROJECT_TAG $CUSTOMER_FILE_PATH/customerInfo.csv`
@@ -61,36 +60,6 @@ if [[ $customer_email != *"@"* ]]; then
         msg="Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi
-
-# Check if is internal customer
-ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
-retval=$?
-if [ $retval -ne 0 ]; then
-    msg="customer $customer_username dosn't have hpc access"
-    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
-    externalUser="Y"
-fi
-
-if [ "$USE_IRODS" = "T" ]; then
-  # Check for existing user
-  irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`#
-
-  # Create account for new user
-  if [ "$irods_user" = "" ]; then
-    iadmin mkuser $customer_username#igfZone rodsuser
-
-    # Set password for external user
-    if [ "$externalUser" = "Y" ]; then
-      iadmin moduser $customer_username#igfZone password $customer_passwd
-    fi
-  fi
-
-  # Set parmissions
-  ichmod -M own igf /igfZone/home/$customer_username
-  ichmod -r inherit /igfZone/home/$customer_username
-fi
-
 
 # Goto the destination dir
 cd $PATH_TO_DESTINATION/$SEQ_RUN_DATE

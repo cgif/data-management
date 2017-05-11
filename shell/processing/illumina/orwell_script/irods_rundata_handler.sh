@@ -43,7 +43,7 @@ CUSTOMERS_FILEPATH=/home/igf/docs/igf/users
 CUSTOMERS_RUNS_FILE=customerInfo.csv
 
 SLACK_URL=https://slack.com/api/chat.postMessage
-SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_orwell'"
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_bot'"
 
 # Initialise log file
 echo -n "" >> $LOG
@@ -100,17 +100,58 @@ do
 	# Get customer information from customer file Perfect Matching!!
 	echo -n $project_tag"," >> $CUSTOMERS_RUNS_FILE
 	customers_info=`grep -w $project_usr $CUSTOMERS_FILEPATH/lims_user.csv`
-	if [[ -z $customers_info ]]; then
-		
+
+	if [[ -z $customers_info ]]; then		
                 msg="subject:Sequencing Run $RUN_NAME Processing Error - customer unknown for project $project_tag. Processing aborted."
                 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 		exit 1
 	fi
 	echo $customers_info >> $CUSTOMERS_RUNS_FILE
+
+        ## Create IRODS account
+        customer_name=`echo $customers_info|cut -d ',' -f2`
+        customer_username=`echo $customers_info|cut -d ',' -f3`
+        customer_passwd=`echo $customers_info|cut -d ',' -f4`
+        customer_email=`echo $customers_info|cut -d ',' -f5`
+
+        if [[ $customer_email != *"@"* ]]; then
+          msg="Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        fi
+
+        # Check for non-hpc users
+        ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep $customer_username"`
+
+        retval=$?
+        if [ $retval -ne 0 ]; then
+          msg="customer $customer_username dosn't have hpc access"
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+          externalUser="Y"
+        fi
+        
+        irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
+
+        if [ "$irods_user" = "" ]; then
+          iadmin mkuser $customer_username#igfZone rodsuser
+
+          msg="customer account for $customer_username is created in irods for project $project_tag "
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh` 
+
+          if [ "$externalUser" = "Y" ]; then
+            iadmin moduser $customer_username#igfZone password $customer_passwd          
+
+            msg="password has been set for non-hpc customer account $customer_username"
+            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh` 
+          fi
+        fi
+
+        ichmod -M own igf /igfZone/home/$customer_username
+        ichmod -r inherit /igfZone/home/$customer_username
 done
+
 if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 	then
-                msg="subject:Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted."
+                msg="Sequencing Run $RUN_NAME Processing Error - Missing file\nRequired file $CUSTOMERS_RUNS_FILE missing for sequencing run $RUN_NAME. Processing aborted."
                 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 		exit 1
 	fi
@@ -133,7 +174,8 @@ cd $TRANSFER_DIR
 
 # Create the run-specific directory
 PATH_TARGET_DIR=$DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME
-msg="`$NOW` Creating target directory $PATH_TARGET_DIR on $HOST..."
+
+msg="Creating target directory $PATH_TARGET_DIR on $HOST"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 ssh $SSH_USER@$HOST "mkdir -m 770 -p " $PATH_TARGET_DIR

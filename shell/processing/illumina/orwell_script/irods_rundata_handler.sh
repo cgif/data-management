@@ -109,14 +109,16 @@ do
 	echo $customers_info >> $CUSTOMERS_RUNS_FILE
 
         ## Create IRODS account
-        customer_name=`echo $customers_info|cut -d ',' -f2`
-        customer_username=`echo $customers_info|cut -d ',' -f3`
-        customer_passwd=`echo $customers_info|cut -d ',' -f4`
-        customer_email=`echo $customers_info|cut -d ',' -f5`
+        customers_info_row=`grep -w $project_tag $CUSTOMERS_RUNS_FILE`
+        customer_name=`echo $customers_info_row|cut -d ',' -f2`
+        customer_username=`echo $customers_info_row|cut -d ',' -f3`
+        customer_passwd=`echo $customers_info_row|cut -d ',' -f4`
+        customer_email=`echo $customers_info_row|cut -d ',' -f5`
 
         if [[ $customer_email != *"@"* ]]; then
-          msg="Sequencing Run $SEQ_RUN_NAME Deploying Warning - the email address for $customer_username is unknown."
+          msg="Sequencing Run $SEQ_RUN_NAME Deploying Error - the email address for $customer_username is unknown, $customer_email"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+          exit 1
         fi
 
         # Check for non-hpc users

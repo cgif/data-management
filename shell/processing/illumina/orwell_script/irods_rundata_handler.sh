@@ -178,6 +178,11 @@ if [ $retval -ne 0 ]; then
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi
 
+if [ ! -s $TRANSFER_DIR/$RUN_NAME_LIST ]; then
+  msg="md5 file for run $RUN_NAME is empty, aporting process"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+fi
+
 cd $TRANSFER_DIR
 
 # Create the run-specific directory
@@ -220,13 +225,23 @@ if [ $retval -ne 0 ]; then
   exit 1
 fi
 
+md5_val=`ssh $SSH_USER@$HOST "du -sh $PATH_TARGET_DIR/$RUN_NAME_LIST|cut -f1"`
+
+if [ $md5_val -eq 0 ]; then
+  msg="Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
+fi
+
+
 # Check transferred files, need to convert it to queue job
 RUN_NAME_CHECKED=${RUN_NAME_LIST}_checked
 
 ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum --quiet -c $RUN_NAME_LIST > $RUN_NAME_CHECKED"
+md5_check_val=`ssh $SSH_USER@$HOST "du -sh $PATH_TARGET_DIR/$RUN_NAME_CHECKED|cut -f1"`
 
-if [ -s $RUN_NAME_CHECKED ]; then
-  msg="subject:Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
+if [ $md5_check_val -eq 0 ]; then
+  msg="Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi

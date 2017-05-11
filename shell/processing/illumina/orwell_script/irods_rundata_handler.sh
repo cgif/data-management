@@ -181,6 +181,7 @@ fi
 if [ ! -s $TRANSFER_DIR/$RUN_NAME_LIST ]; then
   msg="md5 file for run $RUN_NAME is empty, aporting process"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
 fi
 
 cd $TRANSFER_DIR

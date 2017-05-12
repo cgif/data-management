@@ -91,7 +91,7 @@ REMOVE_ADAPTORS="F"
 REMOVE_BAMS="T"
 
 ####### XXXXXXXXXXX
-while getopts "i:t:a:p:b:m:dh" option; do
+while getopts "i:t:a:p:s:b:m:dh" option; do
 case "$option" in
 	i) INPUT_SEQRUN_DIR="$OPTARG";;
 	t) USE_IRODS="$OPTARG";;
@@ -716,9 +716,10 @@ PATH_SAMPLE_SHEET_REFORMATTED=$PATH_RUN_DIR_BCL2FASTQ/$FLOWCELL_ID.csv
 ## Samplesheet reformat
 python $BASE_PYTHON_DIR/scripts/SampleSheet/reformatSampleSheet.py -i $PATH_SAMPLE_SHEET -o $PATH_SAMPLE_SHEET_REFORMATTED -f $INPUT_SEQRUN_DIR/RunInfo.xml
 retval=$?
-if [ $retval -ne 0 ]; then
-  msg="got error while running samplesheet reformat script"
+if [ "$retval" -ne 0 ]; then
+  msg="got error while running samplesheet reformat script, aborting process"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
 fi
 
 ## Check RunInfo if it is Single-Read or Paired-End Sequencing RUN 
@@ -738,6 +739,13 @@ rm -f ${PATH_SAMPLE_SHEET_REFORMATTED}_{1..8}_*
 ## Generate current sub samplesheets
 ###################################
 python $BASE_PYTHON_DIR/scripts/SampleSheet/divide_samplesheet.py --samplesheet_file $PATH_SAMPLE_SHEET_REFORMATTED --output_dir $PATH_RUN_DIR_BCL2FASTQ
+
+retval=$?
+if [ "$retval" -ne 0 ]; then
+  msg="got error while generating sub samplesheets, aborting process"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
+fi
 
 ## Run BCL2FASTQ per lane
 ########################

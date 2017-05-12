@@ -130,11 +130,11 @@ do
                       sample_id_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_ID' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
                       continue
                     fi
-                    if [ $sample_name_col -gt 0 ] && [ $sample_id_col -gt 0 ]; then
+                    if [ "$sample_name_col" -gt 0 ] && [ "$sample_id_col" -gt 0 ]; then
                       sample_name_val=`echo $sampleSheetRow |cut -d',' -f${sample_name_col}`
                       sample_id_val=`echo $sampleSheetRow |cut -d',' -f${sample_id_col}`
 
-                      if [ $sample_id_val == $SAMPLE_ID ]; then
+                      if [ "$sample_id_val" == "$SAMPLE_ID" ]; then
                         SAMPLE_NAME=$sample_name_val
                       fi
                     else
@@ -144,13 +144,14 @@ do
                     fi
                 done
 
-                if [ ! $SAMPLE_NAME ]; then
-                  msg=sample name not found, stopping fastq move for $PROJECT_DIR"
+                if [ ! $sample_id_val ]; then
+                  msg="sample id not found, stopping fastq move for $PROJECT_DIR, aborting process"
                   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
                   exit 1
                 fi
 
-                echo "`$NOW`$SAMPLE_NAME"
+                msg="creating dir structure for $PROJECT_DIR $ILANE $sample_id_val"
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
 		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$sample_id_val
@@ -159,7 +160,9 @@ do
                 mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
                 mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
  
-                # copying Stats and Reports to each project dir
+                msg="copying Stats and Reports to $PROJECT_DIR $ILANE"
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
                 cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
                 cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
                  
@@ -171,6 +174,10 @@ do
 			
 		#change to sample directory
 		cd $SAMPLE_DIR_PATH
+                  
+
+                msg="copying fastq files for $PROJECT_DIR $ILANE $sample_id_val"
+                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 			
 		#this file contains the sample under the threshold of reads
 		for FASTQ_FILE in `ls --color=never *.fastq*.gz`

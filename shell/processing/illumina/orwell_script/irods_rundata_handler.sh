@@ -160,13 +160,16 @@ if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 
 # Hack for selecting files for transfer stats
 RUN_NAME_LIST="${RUN_NAME}_files_md5"
-cd $PATH_SEQRUNS_DIR
+cd $PATH_SEQRUNS_DIR/$RUN_NAME
+
+msg="changing to $PATH_SEQRUNS_DIR/$RUN_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Preparing lists of files
-find $RUN_NAME/ -type f -not -path "*/Logs/*" -not -path "*/Thumbnail_Images/*" -not -path "*/Config/*" -not -path "*/PeriodicSaveRates/*" -not -path "*/Recipe/*" -not -path "*/RTALogs/*" -not -path "*/Images/*" -exec md5sum {} \; > $TRANSFER_DIR/$RUN_NAME_LIST
+find . -type f -not -path "*/Logs/*" -not -path "*/Thumbnail_Images/*" -not -path "*/Config/*" -not -path "*/PeriodicSaveRates/*" -not -path "*/Recipe/*" -not -path "*/RTALogs/*" -not -path "*/Images/*" -exec md5sum {} \; > $TRANSFER_DIR/$RUN_NAME_LIST
 
 retval=$?
-if [ $retval -ne 0 ]; then
+if [ "$retval" -ne 0 ]; then
   msg="got error while running md5 generation for $RUN_NAME"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi
@@ -201,7 +204,7 @@ rsync --exclude Thumbnail_Images \
       -aPce ssh $PATH_SEQRUNS_DIR/$RUN_NAME/ $SSH_USER@$HOST:$PATH_TARGET_DIR/
 
 retval=$?
-if [ $retval -ne 0 ]; then
+if [ "$retval" -ne 0 ]; then
   msg="`$NOW` ERROR registering run data in $TRANSFER_DIR/$RUN_NAME"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
@@ -213,16 +216,16 @@ res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text
 # Transfer the files list to hpc
 rsync -aPce ssh $TRANSFER_DIR/$RUN_NAME_LIST $SSH_USER@$HOST:$PATH_TARGET_DIR
 retval=$?
-if [ $retval -ne 0 ]; then
+if [ "$retval" -ne 0 ]; then
   msg="`$NOW` ERROR registering md5 file in $TRANSFER_DIR/$RUN_NAME"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
 
-md5_val=`ssh $SSH_USER@$HOST "du -sh $PATH_TARGET_DIR/$RUN_NAME_LIST|cut -f1"`
+md5_val=`ssh $SSH_USER@$HOST "wc -l $PATH_TARGET_DIR/$RUN_NAME_LIST|cut -f1 -d' '"`
 
-if [ $md5_val -eq 0 ]; then
-  msg="Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
+if [ "$md5_val" -eq 0 ]; then
+  msg="Sequencing Run $RUN_NAME Processing Error, no entry present in the md5 list. Processing aborted."
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
@@ -231,11 +234,11 @@ fi
 # Check transferred files, need to convert it to queue job
 RUN_NAME_CHECKED=${RUN_NAME_LIST}_checked
 
-ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum --quiet -c $RUN_NAME_LIST > $RUN_NAME_CHECKED"
-md5_check_val=`ssh $SSH_USER@$HOST "du -sh $PATH_TARGET_DIR/$RUN_NAME_CHECKED|cut -f1"`
+ssh $SSH_USER@$HOST "cd $PATH_TARGET_DIR; md5sum -c $RUN_NAME_LIST > $PATH_TARGET_DIR/$RUN_NAME_CHECKED"
+md5_check_val=`ssh $SSH_USER@$HOST "grep -w FAILED $PATH_TARGET_DIR/$RUN_NAME_CHECKED|cut -f1"`
 
-if [ $md5_check_val -eq 0 ]; then
-  msg="Sequencing Run $RUN_NAME Processing Error - MD5 check failed\nThe MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
+if [ "$md5_check_val" -eq 0 ]; then
+  msg="MD5 check for the file transfer of sequencing run $RUN_NAME failed. Processing aborted."
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
@@ -254,8 +257,9 @@ msg="running hpc jobs for $RUN_NAME"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 ssh $SSH_USER@$HOST "source /etc/bashrc; $PATH_BCL2CRAM_SCRIPT -i $DATA_VOL_IGF/rawdata/seqrun/bcl/$RUN_NAME -t $USE_IRODS -a $REMOVE_ADAPTORS -b $REMOVE_BAMS -p $BASE_PYTHON_DIR -s $SLACK_TOKEN"
+
 retval=$?
-if [ $retval -ne 0 ]; then
+if [ "$retval" -ne 0 ]; then
   msg="got error while running hpc job"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 fi

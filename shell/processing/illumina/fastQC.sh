@@ -16,12 +16,6 @@
 
 module load fastqc/0.11.2
 
-#now
-NOW="date +%Y-%m-%d%t%T%t"
-
-#today
-TODAY=`date +%Y-%m-%d`
-
 #CONFIGURATION
 ##############
 
@@ -32,6 +26,15 @@ PROJECT_NAME=#projectName
 DEPLOYMENT_SERVER=#deploymentServer
 DEPLOYMENT_PATH=#deploymentPath
 SUMMARY_PATH=#summaryPath
+
+DATA_VOL_IGF=#dataVolIgf
+TODAY=#toDay
+SEQRUN_DATE=#seqrunDate
+FASTQC_SCRIPT_DIR=#fastqcScriptDir
+
+SLACK_URL=#slackUrl
+SLACK_OPT=#slackOpt
+SLACK_TOKEN=#slackToken
 
 ############################################
 
@@ -102,7 +105,12 @@ do
     cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
     chmod 770 $fastQC_script_path
 
-        
+    if [ "$fastq_read2" -ne '' ];then
+      fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+    else
+      fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+    fi
+            
   done
 
 done

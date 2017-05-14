@@ -336,254 +336,49 @@ function submitfastqcJobs {
     scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
     ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
-    for lane_dir in `find $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
-    do
-      # LANE
-      local bcl2fastq_job_id=`grep $lane_dir $BCL2FASTQ_JOB_ID_LIST|cut -f2 -d','`
+    local bcl2fastq_job_id=`grep $lane_dir $BCL2FASTQ_JOB_ID_LIST|cut -f2 -d','`
 
-      for sample_name in `find $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
-      do
-        # SAMPLE
-        local path_reads_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir/$sample_name
-
-        # Go to next sample if its Reports or Stats dir
-        local path_reads_dir_basename=`basename $path_reads_dir`
-        if [ $path_reads_dir_basename == 'Stats' ] || [ $path_reads_dir_basename == 'Reports' ]; then
-         continue
-        fi
-
-        local project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-        local project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
-        local qc_report_outputdir=$project_results_dir/$sample_name
-        local ms_runs_dir=$project_runs_dir/multisample
-        mkdir -m 770 -p $qc_report_outputdir
-
-        # Deployment directories for the QC reports for each file
-        local fastqc_deployment_path=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE/$sample_name
-        local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
-
-        local sample_runs_dir=$project_runs_dir/$sample_name
-        mkdir -m 770 -p $sample_runs_dir
-
-        # Assign fastq files
-        fastq_arr=''
-        declare -a fastq_arr=$( echo "("; find $path_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
-
-        local fastq_read1=''
-        local fastq_read2=''
-
-        if [ ${#fastq_arr[@]} -eq 1 ];then
-          local fastq_read2=${fastq_arr[0]}
-
-        elif [ ${#fastq_arr[@]} -eq 2 ];then
-          fastq_read1=${fastq_arr[0]}
-          fastq_read2=${fastq_arr[1]}
-        else
-          msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
-          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-          exit 1
-        fi
         
-       local fastQC_script_path=$sample_runs_dir/fastQC.$fastq_read1.sh
-        cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
-        chmod 770 $fastQC_script_path
+    local fastQC_script_path=$sample_runs_dir/fastQC.$fastq_read1.sh
+    cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
+    chmod 770 $fastQC_script_path
 
-        # Configure fastqc script
-        sed -i -e "s|#pathReadsFastq|$path_reads_dir|" $fastQC_script_path
-        sed -i -e "s|#fastqRead1|${fastq_read1}|" $fastQC_script_path
-        sed -i -e "s|#fastqRead2|${fastq_read2}|" $fastQC_script_path
-        sed -i -e "s|#pathQcReportDir|${qc_report_outputdir}|" $fastQC_script_path
-        sed -i -e "s|#singleReads|F|" $fastQC_script_path
-        sed -i -e "s|#deploymentServer|${DEPLOYMENT_SERVER}|" $fastQC_script_path
-        sed -i -e "s|#deploymentPath|${fastqc_deployment_path}|" $fastQC_script_path
-        sed -i -e "s|#summaryPath|${fastqc_summary_deployment}|" $fastQC_script_path
-
-        #submit job
-        local log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
-        touch $log_output_path
-        local job_id=null
-        job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
-        echo -e "$job_id" >> $job_id_list
-
-        msg="submitting fastqc job for $project, $SEQRUN_DATE, $sample_name, $lane_dir"
-        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-      done
-
-      # LANE
-      # Copy demultiplexing reports
-      scp -r $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir/Reports/html  $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
-
-      msg="Demultiplexing stats for run $SEQRUN_NAME in available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
-      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
-      # FastQC jobs for unassigned reads
-      local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
-      local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
-      local ms_runs_dir=$seqrun_runs_dir/multisample
-      mkdir -m 770 -p $ms_runs_dir
-      chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
-
-      local sample_runs_dir=$seqrun_runs_dir/$lane_dir
-      mkdir -m 770 -p $sample_runs_dir
-
-      local uqc_report_outputdir=$seqrun_results_dir/$lane_dir
-      local ufastqc_deployment_path=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE/$lane_dir
-      local ufastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
-
-      local ujob_id_list=$ms_runs_dir/ujob_id_list.$SEQRUN_NAME.txt
-      echo -n "" > $ujob_id_list
-      chmod 660 $ujob_id_list
-
-      local upath_reads_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME/Undetermined_indices/Sample_lane${lane_dir}
-      declare -a ufastq_arr=$( echo "("; find $upath_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
-
-      local ufastq_read1=''
-      local ufastq_read2=''
-
-      if [ ${#ufastq_arr[@]} -eq 1 ];then
-        ufastq_read1=${ufastq_arr[0]}
-      elif [ ${#ufastq_arr[@]} -eq 2 ];then
-        ufastq_read1=${ufastq_arr[0]}
-        ufastq_read2=${ufastq_arr[1]}
-      else
-        msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
-        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-        exit 1
-      fi
-      local ufastQC_script_path=$sample_runs_dir/fastQC.$ufastq_read1.sh
-      cp $FASTQC_SCRIPT_DIR/fastQC.sh $ufastQC_script_path
-      chmod 770 $ufastQC_script_path
-
-      #configure fastqc script
-      sed -i -e "s|#pathReadsFastq|${upath_reads_dir}|" $ufastQC_script_path
-      sed -i -e "s|#fastqRead1|${ufastq_read1}|" $ufastQC_script_path
-      sed -i -e "s|#fastqRead2|${ufastq_read2}|" $ufastQC_script_path
-      sed -i -e "s|#pathQcReportDir|${uqc_report_outputdir}|" $ufastQC_script_path
-      sed -i -e "s|#singleReads|F|" $ufastQC_script_path
-      sed -i -e "s|#deploymentServer|${DEPLOYMENT_SERVER}|" $ufastQC_script_path
-      sed -i -e "s|#deploymentPath|${ufastqc_deployment_path}|" $ufastQC_script_path
-      sed -i -e "s|#summaryPath|${ufastqc_summary_deployment}|" $ufastQC_script_path
-
-      #submit job
-      local log_output_path=`echo $ufastQC_script_path | perl -pe 's/\.sh/\.log/g'`
-      touch $log_output_path
-      local ujob_id=null
-      ujob_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $ufastQC_script_path`
-      echo -e "$ujob_id" >> $ujob_id_list
-
-      msg="submitting fastqc job for undetermined bases $SEQRUN_NAME, $lane_dir"
-      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
-      #submit summary job for unassigned reads
-      #create summary directory on deployment server
-      local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
-      ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
-      ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME"  < /dev/null
-      scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-      scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-      scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-      scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-      ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
-
-      #create summary script from template
-      local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
-      local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
-      local seqrun_rawdata_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
-      local ms_runs_dir=$seqrun_runs_dir/multisample
-      local ms_results_dir=$seqrun_results_dir/multisample
-
-      mkdir -m 770 -p $ms_runs_dir
-      mkdir -m 770 -p $ms_results_dir
-      chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
-      chmod -R 770 $DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME
-      chmod -R 770 $DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
-
-      local summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
-      cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
-      chmod 770 $summary_path
-      local path_fastq_dir=$seqrun_rawdata_dir/Undetermined_indices
-
-      #configure summary script, it will be executed from fastqc script
-      sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $summary_path
-      sed -i -e "s|#pathReportsDir|${seqrun_results_dir}|" $summary_path
-      sed -i -e "s|#pathRunsDir|${seqrun_runs_dir}|" $summary_path
-      sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $summary_path
-      sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $summary_path
-      sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $summary_path
-
-      local job_id_list=$ms_runs_dir/job_id_list.$SEQRUN_NAME.txt
-      local summary_job_dependency="afterany"
-
-      for job_id in `grep 'cx1' $ujob_id_list`
-      do
-        job_id=`basename $job_id .cx1b`
-        summary_job_dependency="$summary_job_dependency:$job_id"
-      done
-
-      local log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
-      local job_id=null
-      job_id=`qsub -q $QUEUE -l walltime=24:00:00 -l select=1:ncpus=1:mem=500mb -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
-      SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id
-    done
-
-    # PROJECT
-    #create summary script from template
-    local project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE
-    local project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-    local project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
-    local ms_runs_dir=$project_runs_dir/multisample
-    local ms_results_dir=$project_results_dir/multisample
-    local summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
-
-    mkdir -p -m 770 $ms_runs_dir
-    mkdir -p -m 770 $ms_results_dir
-    cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
-    chmod 770 $summary_path
-
-    local path_fastq_dir=$project_rawdata_dir
-    local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
-
-    #configure summary script, it will be executed from fastqc script
-    sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $summary_path
-    sed -i -e "s|#pathReportsDir|${project_results_dir}|" $summary_path
-    sed -i -e "s|#pathRunsDir|${project_runs_dir}|" $summary_path
-    sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $summary_path
-    sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $summary_path
-    sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $summary_path
-
-    #summary is on hold until fastqc runs are completed
-    local summary_job_dependency="afterany"
-    for job_id in `grep 'cx1' $job_id_list`
-    do
-      job_id=`basename $job_id .cx1b`
-      summary_job_dependency="$summary_job_dependency:$job_id"
-    done
-
-    local log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
-    local job_id=null
-    job_id=`qsub -q $QUEUE -l walltime=24:00:00 -l select=1:ncpus=1:mem=500mb -W depend=$summary_job_dependency -o $log_output_path -j oe $summary_path`
-    SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id
-
-    # MultiQC
-    local multiqc_path=$ms_runs_dir/multiqc.$SEQRUN_NAME.sh
-    cp $FASTQC_SCRIPT_DIR/multiqc.sh $multiqc_path
-    chmod 770 $multiqc_path
-
-    #configure multiqc script
-    sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $multiqc_path
-    sed -i -e "s|#pathReportsDir|${project_results_dir}|" $multiqc_path
-    sed -i -e "s|#pathRunsDir|${project_runs_dir}|" $multiqc_path
-    sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $multiqc_path
-    sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $multiqc_path
-    sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $multiqc_path
+    # Configure fastqc script
+    sed -i -e "s|#pathReadsFastq|$path_reads_dir|" $fastQC_script_path
+    sed -i -e "s|#fastqRead1|${fastq_read1}|" $fastQC_script_path
+    sed -i -e "s|#fastqRead2|${fastq_read2}|" $fastQC_script_path
+    sed -i -e "s|#pathQcReportDir|${qc_report_outputdir}|" $fastQC_script_path
+    sed -i -e "s|#singleReads|F|" $fastQC_script_path
+    sed -i -e "s|#deploymentServer|${DEPLOYMENT_SERVER}|" $fastQC_script_path
+    sed -i -e "s|#deploymentPath|${fastqc_deployment_path}|" $fastQC_script_path
+    sed -i -e "s|#summaryPath|${fastqc_summary_deployment}|" $fastQC_script_path
 
     #submit job
-    local log_path=`echo $multiqc_path | perl -pe 's/\.sh/\.log/g'`
-    local job_id=`qsub -q $QUEUE -l select=1:ncpus=1:mem=500mb -W depend=$summary_job_dependency -o $log_path -j oe $multiqc_path`
+    local log_output_path=`echo $fastQC_script_path | perl -pe 's/\.sh/\.log/g'`
+    touch $log_output_path
+    local job_id=null
+    job_id=`qsub -W depend=afterok:$bcl2fastq_job_id -o $log_output_path $fastQC_script_path`
+    echo -e "$job_id" >> $job_id_list
 
-    msg="fastqc report for $project  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$project/fastqc/$SEQRUN_DATE"
-    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-    
+    #submit summary job for unassigned reads
+    #create summary directory on deployment server
+    local fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+    ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME"  < /dev/null
+    scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+    scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+    scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+    scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
+
+    #create summary script from template
+    local seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
+    local seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+    local seqrun_rawdata_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
+    local ms_runs_dir=$seqrun_runs_dir/multisample
+    local ms_results_dir=$seqrun_results_dir/multisample
+
+    SERP_DEPENDENCIES=$SERP_DEPENDENCIES:$job_id   
   done 
 }
 

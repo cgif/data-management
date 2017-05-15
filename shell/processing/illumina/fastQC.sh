@@ -93,29 +93,63 @@ do
 
     sample_runs_dir=$project_runs_dir/$sample_name
     mkdir -m 770 -p $sample_runs_dir
-  
-    # Assign fastq files
-    fastq_arr=''
-  
-    declare -a fastq_arr=$( echo "("; find $path_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
-    fastq_read1=''
-    fastq_read2=''
-    
-    if [ ${#fastq_arr[@]} -eq 1 ];then
-      fastq_read2=${fastq_arr[0]}
-    elif [ ${#fastq_arr[@]} -eq 2 ];then
-      fastq_read1=${fastq_arr[0]}
-      fastq_read2=${fastq_arr[1]}
-    else
-      msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
-      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-      exit 1
-    fi
 
-    if [ "$fastq_read2" -ne '' ];then
-      fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+    # Hack for checking NextSeq dir, replace it with db check
+    if [[ $SEQRUN_NAME =~ _NB501820_ ]];then
+      declare -a files=`find $dir -type f -name '*fastq.gz' -exec basename {} \;`
+      declare -a lanes=`echo "("; echo "${files[@]}"|sed 's/.*_\(L00[1-9]\)_.*/\1/g'|sort -u; echo ")"`
+      
+      for lane in ${lanes[@]}
+      do
+        fastq_arr=''
+        declare -a fastq_arr=`echo "("; echo "${files[@]}"|grep $lane; echo ")"`
+
+        fastq_read1=''
+        fastq_read2=''
+ 
+        if [ ${#fastq_arr[@]} -eq 1 ];then
+          fastq_read1=${fastq_arr[0]}
+        elif [ ${#fastq_arr[@]} -eq 2 ];then
+          fastq_read1=${fastq_arr[0]}
+          fastq_read2=${fastq_arr[1]}
+        else
+          msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+          exit 1
+        fi
+
+        # Submit fastqc jobs for NextSeq platform
+        if [ "$fastq_read2" -ne '' ];then
+          fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+        else
+          fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+        fi
+      done
+
     else
-      fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+      # Assign fastq files for other illumina platforms
+      fastq_arr=''
+  
+      declare -a fastq_arr=$( echo "("; find $path_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
+      fastq_read1=''
+      fastq_read2=''
+    
+      if [ ${#fastq_arr[@]} -eq 1 ];then
+        fastq_read1=${fastq_arr[0]}
+      elif [ ${#fastq_arr[@]} -eq 2 ];then
+        fastq_read1=${fastq_arr[0]}
+        fastq_read2=${fastq_arr[1]}
+      else
+        msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        exit 1
+      fi
+
+      if [ "$fastq_read2" -ne '' ];then
+        fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+      else
+        fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+      fi
     fi
             
   done
@@ -141,25 +175,60 @@ do
   ufastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
   upath_reads_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME/Undetermined_indices/Sample_lane${lane_dir}
  
-  declare -a ufastq_arr=$( echo "("; find $upath_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
-  ufastq_read1=''
-  ufastq_read2=''
+  # Hack for checking NextSeq dir, replace it with db check
+  if [[ $SEQRUN_NAME =~ _NB501820_ ]];then
+    declare -a files=`find $upath_reads_dir -type f -name '*fastq.gz' -exec basename {} \;`
+    declare -a lanes=`echo "("; echo "${files[@]}"|sed 's/.*_\(L00[1-9]\)_.*/\1/g'|sort -u; echo ")"`
+    
+    for lane in ${lanes[@]}
+    do
+      ufastq_arr=''
+      declare -a ufastq_arr=`echo "("; echo "${files[@]}"|grep $lane; echo ")"`
+  
+      ufastq_read1=''
+      ufastq_read2=''
+ 
+      if [ ${#ufastq_arr[@]} -eq 1 ];then
+        ufastq_read1=${ufastq_arr[0]}
+      elif [ ${#ufastq_arr[@]} -eq 2 ];then
+        ufastq_read1=${ufastq_arr[0]}
+        ufastq_read2=${ufastq_arr[1]}
+      else
+        msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        exit 1
+      fi
 
-  if [ ${#ufastq_arr[@]} -eq 1 ];then
-    ufastq_read1=${ufastq_arr[0]}
-  elif [ ${#ufastq_arr[@]} -eq 2 ];then
-    ufastq_read1=${ufastq_arr[0]}
-    ufastq_read2=${ufastq_arr[1]}
+      # Submit fastqc jobs for NextSeq platform  
+      if [ "$ufastq_read2" -ne '' ];then
+        fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
+      else
+        fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+      fi
+    done
   else
-    msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
-    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-    exit 1
-  fi
+    # Submit jobs for other illumina platform
+    ufastq_arr=''
+    declare -a ufastq_arr=$( echo "("; find $upath_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
+    ufastq_read1=''
+    ufastq_read2=''
 
-  if [ "$ufastq_read2" -ne '' ];then
-    fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
-  else
-    fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+    if [ ${#ufastq_arr[@]} -eq 1 ];then
+      ufastq_read1=${ufastq_arr[0]}
+    elif [ ${#ufastq_arr[@]} -eq 2 ];then
+      ufastq_read1=${ufastq_arr[0]}
+      ufastq_read2=${ufastq_arr[1]}
+    else
+      msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
+      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+      exit 1
+    fi
+
+    if [ "$ufastq_read2" -ne '' ];then
+      fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
+    else
+      fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+    fi
   fi
 
   #submit summary job for unassigned reads

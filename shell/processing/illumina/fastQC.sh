@@ -202,6 +202,13 @@ do
 
   # run summary script per lane
   perl $summary_path 2> $log_output_path
+  retval=$?
+  if [ "$retval" -ne 0 ]; then
+    msg="got error while running summary generation step for $SEQRUN_NAME : $lane_dir , aborting process"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
+  fi
+
 done
 
 # PROJECT
@@ -235,6 +242,14 @@ log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
 # run summary script per lane
 perl $summary_path 2> $log_output_path
 
+retval=$?
+if [ "$retval" -ne 0 ]; then
+  msg="got error while running summary generation step for $project , aborting process"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
+fi
+
+
 # MultiQC
 multiqc_path=$ms_runs_dir/multiqc.$SEQRUN_NAME.sh
 cp $FASTQC_SCRIPT_DIR/multiqc.sh $multiqc_path
@@ -252,6 +267,13 @@ sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $multiqc_path
 ms_log_path=`echo $multiqc_path | perl -pe 's/\.sh/\.log/g'`
 
 bash $multiqc_path 2> $ms_log_path
+
+retval=$?
+if [ "$retval" -ne 0 ]; then
+  msg="got error while running multiqc generation step for $project , aborting process"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  exit 1
+fi
 
 msg="fastqc report for $project  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$project/fastqc/$SEQRUN_DATE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`

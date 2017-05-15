@@ -308,8 +308,7 @@ function submitfastqcJobs {
   do
     # PROJECT
 
-    local bcl2fastq_job_ids=`cut -f1 -d' ' $BCL2FASTQ_JOB_ID_LIST` # fixit
-    local bcl2fastq_job_id=''
+    local bcl2fastq_job_id=`cut -f2 -d',' $BCL2FASTQ_JOB_ID_LIST|xargs -i basename {} '.cx1b'|xargs echo -n|sed 's/ /:/g'`
 
     local fastQC_script_path=$sample_runs_dir/fastQC.$fastq_read1.sh
     cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path

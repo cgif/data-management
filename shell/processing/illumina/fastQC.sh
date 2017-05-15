@@ -29,6 +29,7 @@ SUMMARY_PATH=#summaryPath
 
 DATA_VOL_IGF=#dataVolIgf
 TODAY=#toDay
+SEQRUN_NAME=#seqrunName
 SEQRUN_DATE=#seqrunDate
 FASTQC_SCRIPT_DIR=#fastqcScriptDir
 
@@ -40,22 +41,22 @@ SLACK_TOKEN=#slackToken
 # PROJECT
 
 # Create and set permissions for run directory
-project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
+project_runs_dir=$DATA_VOL_IGF/runs/$PROJECT_NAME/fastqc/$TODAY
 mkdir -m 770 -p $project_runs_dir
 ms_runs_dir=$project_runs_dir/multisample
 mkdir -m 770 -p $ms_runs_dir
-chmod -R 770 $DATA_VOL_IGF/runs/$project
+chmod -R 770 $DATA_VOL_IGF/runs/$PROJECT_NAME
 
 # Create and set permissions for results project parent directory
-project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
+project_results_dir=$DATA_VOL_IGF/results/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 
 mkdir -m 770 -p $project_results_dir/multisample
-chmod -R 770 $DATA_VOL_IGF/results/$project
+chmod -R 770 $DATA_VOL_IGF/results/$PROJECT_NAME
 
 # Create deployment dir and copy required files
-fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
+fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
-ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$project"  < /dev/null
+ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME"  < /dev/null
 scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
@@ -63,15 +64,15 @@ scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$f
 ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
 
-for lane_dir in `find $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
+for lane_dir in `find $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do
   # LANE
 
-  for sample_name in `find $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
+  for sample_name in `find $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/$lane_dir -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
   do
     # SAMPLE
    
-    path_reads_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir/$sample_name
+    path_reads_dir=$DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/$lane_dir/$sample_name
 
     # Go to next sample if its Reports or Stats dir
 
@@ -80,16 +81,16 @@ do
       continue
     fi
 
-    project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-    project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
+    project_runs_dir=$DATA_VOL_IGF/runs/$PROJECT_NAME/fastqc/$TODAY
+    project_results_dir=$DATA_VOL_IGF/results/$PROJECT_NAME/fastqc/$SEQRUN_DATE
     qc_report_outputdir=$project_results_dir/$sample_name
     ms_runs_dir=$project_runs_dir/multisample
 
     mkdir -m 770 -p $qc_report_outputdir
     
     # Deployment directories for the QC reports for each file
-    fastqc_deployment_path=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE/$sample_name
-    fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
+    fastqc_deployment_path=$DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE/$sample_name
+    fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 
     sample_runs_dir=$project_runs_dir/$sample_name
     mkdir -m 770 -p $sample_runs_dir
@@ -156,7 +157,7 @@ do
 
   # LANE
   # Copy demultiplexing reports
-  scp -r $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir/Reports/html $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
+  scp -r $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/$lane_dir/Reports/html $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
 
   msg="Demultiplexing stats for run $SEQRUN_NAME is available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
@@ -283,9 +284,9 @@ done
 # PROJECT
 #create summary script from template
 
-project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE
-project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
-project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
+project_rawdata_dir=$DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE
+project_runs_dir=$DATA_VOL_IGF/runs/$PROJECT_NAME/fastqc/$TODAY
+project_results_dir=$DATA_VOL_IGF/results/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 ms_runs_dir=$project_runs_dir/multisample
 ms_results_dir=$project_results_dir/multisample
 summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
@@ -296,7 +297,7 @@ cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
 chmod 770 $summary_path
 
 path_fastq_dir=$project_rawdata_dir
-fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
+fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 
 #configure summary script, it will be executed from fastqc script
 sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $summary_path
@@ -313,7 +314,7 @@ perl $summary_path 2> $log_output_path
 
 retval=$?
 if [ "$retval" -ne 0 ]; then
-  msg="got error while running summary generation step for $project , aborting process"
+  msg="got error while running summary generation step for $PROJECT_NAME , aborting process"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
@@ -339,12 +340,12 @@ bash $multiqc_path 2> $ms_log_path
 
 retval=$?
 if [ "$retval" -ne 0 ]; then
-  msg="got error while running multiqc generation step for $project , aborting process"
+  msg="got error while running multiqc generation step for $PROJECT_NAME , aborting process"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   exit 1
 fi
 
-msg="fastqc report for $project  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$project/fastqc/$SEQRUN_DATE"
+msg="fastqc report for $PROJECT_NAME  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 

@@ -37,6 +37,7 @@ SLACK_OPT=#slackOpt
 SLACK_TOKEN=#slackToken
 
 ############################################
+# PROJECT
 
 # Create and set permissions for run directory
 project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
@@ -50,6 +51,16 @@ project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
 
 mkdir -m 770 -p $project_results_dir/multisample
 chmod -R 770 $DATA_VOL_IGF/results/$project
+
+# Create deployment dir and copy required files
+fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
+ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
+ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$project"  < /dev/null
+scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
 
 for lane_dir in `find $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
@@ -101,10 +112,6 @@ do
       exit 1
     fi
 
-    fastQC_script_path=$sample_runs_dir/fastQC.$fastq_read1.sh
-    cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
-    chmod 770 $fastQC_script_path
-
     if [ "$fastq_read2" -ne '' ];then
       fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
     else
@@ -113,7 +120,142 @@ do
             
   done
 
+  # LANE
+  # Copy demultiplexing reports
+  scp -r $DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE/$lane_dir/Reports/html $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
+
+  msg="Demultiplexing stats for run $SEQRUN_NAME is available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
+  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
+  # FastQC jobs for unassigned reads
+  seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
+  seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+  ms_runs_dir=$seqrun_runs_dir/multisample
+  mkdir -m 770 -p $ms_runs_dir
+  chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
+
+  sample_runs_dir=$seqrun_runs_dir/$lane_dir
+  mkdir -m 770 -p $sample_runs_dir
+  uqc_report_outputdir=$seqrun_results_dir/$lane_dir
+  ufastqc_deployment_path=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE/$lane_dir
+  ufastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+  upath_reads_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME/Undetermined_indices/Sample_lane${lane_dir}
+ 
+  declare -a ufastq_arr=$( echo "("; find $upath_reads_dir -type f -name '*fastq.gz' -exec basename {} \; ; echo ")")
+  ufastq_read1=''
+  ufastq_read2=''
+
+  if [ ${#ufastq_arr[@]} -eq 1 ];then
+    ufastq_read1=${ufastq_arr[0]}
+  elif [ ${#ufastq_arr[@]} -eq 2 ];then
+    ufastq_read1=${ufastq_arr[0]}
+    ufastq_read2=${ufastq_arr[1]}
+  else
+    msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
+  fi
+
+  if [ "$ufastq_read2" -ne '' ];then
+    fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
+  else
+    fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+  fi
+
+  #submit summary job for unassigned reads
+  #create summary directory on deployment server
+  fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+  ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment" < /dev/null
+  ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME" < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+  ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
+
+  #create summary script from template
+  seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
+  seqrun_results_dir=$DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
+  seqrun_rawdata_dir=$DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
+  ms_runs_dir=$seqrun_runs_dir/multisample
+  ms_results_dir=$seqrun_results_dir/multisample
+
+  mkdir -m 770 -p $ms_runs_dir
+  mkdir -m 770 -p $ms_results_dir
+  chmod -R 770 $DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME
+  chmod -R 770 $DATA_VOL_IGF/results/seqrun/$SEQRUN_NAME
+  chmod -R 770 $DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
+
+  summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
+  cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
+  chmod 770 $summary_path
+  path_fastq_dir=$seqrun_rawdata_dir/Undetermined_indices
+
+  #configure summary script, it will be executed from fastqc script
+  sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $summary_path
+  sed -i -e "s|#pathReportsDir|${seqrun_results_dir}|" $summary_path
+  sed -i -e "s|#pathRunsDir|${seqrun_runs_dir}|" $summary_path
+  sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $summary_path
+  sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $summary_path
+  sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $summary_path
+  log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
+
+  # run summary script per lane
+  perl $summary_path 2> $log_output_path
 done
+
+# PROJECT
+#create summary script from template
+
+project_rawdata_dir=$DATA_VOL_IGF/rawdata/$project/fastq/$SEQRUN_DATE
+project_runs_dir=$DATA_VOL_IGF/runs/$project/fastqc/$TODAY
+project_results_dir=$DATA_VOL_IGF/results/$project/fastqc/$SEQRUN_DATE
+ms_runs_dir=$project_runs_dir/multisample
+ms_results_dir=$project_results_dir/multisample
+summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
+
+mkdir -p -m 770 $ms_runs_dir
+mkdir -p -m 770 $ms_results_dir
+cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
+chmod 770 $summary_path
+
+path_fastq_dir=$project_rawdata_dir
+fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$project/fastqc/$SEQRUN_DATE
+
+#configure summary script, it will be executed from fastqc script
+sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $summary_path
+sed -i -e "s|#pathReportsDir|${project_results_dir}|" $summary_path
+sed -i -e "s|#pathRunsDir|${project_runs_dir}|" $summary_path
+sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $summary_path
+sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $summary_path
+sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $summary_path
+
+log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
+
+# run summary script per lane
+perl $summary_path 2> $log_output_path
+
+# MultiQC
+multiqc_path=$ms_runs_dir/multiqc.$SEQRUN_NAME.sh
+cp $FASTQC_SCRIPT_DIR/multiqc.sh $multiqc_path
+chmod 770 $multiqc_path
+
+#configure multiqc script
+sed -i -e "s|#pathReadsFastq|${path_fastq_dir}|" $multiqc_path
+sed -i -e "s|#pathReportsDir|${project_results_dir}|" $multiqc_path
+sed -i -e "s|#pathRunsDir|${project_runs_dir}|" $multiqc_path
+sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $multiqc_path
+sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $multiqc_path
+sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $multiqc_path
+
+# submit multiqc job
+ms_log_path=`echo $multiqc_path | perl -pe 's/\.sh/\.log/g'`
+
+bash $multiqc_path 2> $ms_log_path
+
+msg="fastqc report for $project  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$project/fastqc/$SEQRUN_DATE"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 
 ############################################
 function fastqcSubmit {

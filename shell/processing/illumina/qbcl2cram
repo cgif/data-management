@@ -63,7 +63,7 @@ PATTERN_READ_1=_R1_
 PATTERN_READ_2=_R2_
 WALLTIME_HOURS_PER_RUN_BWA=30
 
-FASTQC_SCRIPT_DIR=$BASEDIR
+FASTQC_SCRIPT_DIR=$BASEDIR/
 WORKFLOWS_RESOURCES_DIR=$BASEDIR/../../../../workflows/shell/resources
 WORKFLOW_REPO_DIR=$BASEDIR/../../../../workflows/
 GROUP_VOL_CGI=/groupvol/cgi
@@ -311,7 +311,7 @@ function submitfastqcJobs {
 
     local bcl2fastq_job_id=`cut -f2 -d',' $BCL2FASTQ_JOB_ID_LIST|xargs -i basename {} '.cx1b'|xargs echo -n|sed 's/ /:/g'`
 
-    local fastQC_script_path=$sample_runs_dir/fastQC.$fastq_read1.sh
+    local fastQC_script_path=$PATH_RUN_DIR_BCL2FASTQ/fastQC.$project.sh
     cp $FASTQC_SCRIPT_DIR/fastQC.sh $fastQC_script_path
     chmod 770 $fastQC_script_path
 

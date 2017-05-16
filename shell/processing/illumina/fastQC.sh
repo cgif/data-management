@@ -258,6 +258,7 @@ do
 
   # LANE
   # Copy demultiplexing reports
+  ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
   scp -r $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/$lane_dir/Reports/html $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
 
   msg="Demultiplexing stats for run $SEQRUN_NAME is available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"

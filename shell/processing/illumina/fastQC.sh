@@ -49,57 +49,71 @@ function fastqcSubmit {
   local single_read='F'
 
   local fastq_read1=`basename $path_fastq_read1`
-  local fastq_read2=`basename $path_fastq_read2`
+  if [ "$path_fastq_read2" == '' ]; then
+    local fastq_read2=`basename $path_fastq_read2`
+  fi
 
-  if [ ! -s $fastq_read1 ]; then
-    msg='fastq1 is missing, aborting process'
+  if [ ! -s $path_fastq_read1 ]; then
+    msg="fastq1 is missing, aborting process"
     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
   fi
 
   #create temporary QC report output directory
   rm -rf $TMPDIR/qc
-  mkdir $TMPDIR/qc
+  rm -rf $TMPDIR/fastq
+  mkdir -m 770 -p $TMPDIR/qc
+  mkdir -m 770 -p $TMPDIR/fastq
 
   #copy fastqs to tmp space
-  cp $path_fastq_read1 $TMPDIR/$fastq_read1
-
+  cp $path_fastq_read1 $TMPDIR/fastq/$fastq_read1
+  if [ $? -ne "0" ]; then
+    msg="ERROR while copying $fastq_read1"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
+  fi
+  
   # checks if FASTQ_READ2 exists. If doesn't exists assume RUN sigle read
-  if [ ! -f "$fastq_read2" ]; then
-    $single_read="T"
+  if [ "$path_fastq_read2" == '' ]; then
+    single_read="T"
   fi
 
   if [[ "$single_read" == "F" ]]; then
-    cp $path_fastq_read2 $TMPDIR/$fastq_read2
+    cp $path_fastq_read2 $TMPDIR/fastq/$fastq_read2
+    if [ $? -ne "0" ]; then
+      msg="ERROR while copying $fastq_read2"
+      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+      exit 1
+    fi
   fi
            
   #check if mate file found and the number of lines in mate files is the same
-  gzip -t $TMPDIR/$fastq_read1
+  gzip -t $TMPDIR/fastq/$fastq_read1
   if [ $? -ne "0" ]; then
     msg="ERROR:File $fastq_read1 is corrupted. Skipped" 
     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   fi
 
   if [[ "$single_read" == "F" ]]; then
-    gzip -t $TMPDIR/$fastq_read2
+    gzip -t $TMPDIR/fastq/$fastq_read2
     if [ $? -ne "0" ]; then
       msg="ERROR:File $FASTQ_READ2 is corrupted. Skipped." 
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
     else 
-      local count_lines_read1=`gzip -d -c $TMPDIR/$fastq_read1 | wc -l | cut -f 1 -d ' '`
-      local count_lines_read2=`gzip -d -c $TMPDIR/$fastq_read2 | wc -l | cut -f 1 -d ' '`
+      local count_lines_read1=`gzip -d -c $TMPDIR/fastq/$fastq_read1 | wc -l | cut -f 1 -d ' '`
+      local count_lines_read2=`gzip -d -c $TMPDIR/fastq/$fastq_read2 | wc -l | cut -f 1 -d ' '`
 
       if [ "$count_lines_read1" -ne "$count_lines_read2" ]; then
         msg="ERROR:Unequal number of lines in the mate files. Skipped." 
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       else
-        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
-	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read2
-			
+        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
+	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read2
       fi	
     fi
   else
     #run FastQC for single reads
-    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
+    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
   fi
 
   # if Undetermined fastq file
@@ -107,7 +121,7 @@ function fastqcSubmit {
   then 
     #try to find the correct barcode
     barcodes=`echo $fastq_read1 | perl -pe 's/_R1//g'`
-    zcat $TMPDIR/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/${barcodes}.txt
+    zcat $TMPDIR/fastq/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/${barcodes}.txt
 
     #copies barcode file in the results directory
     cp $TMPDIR/qc/${barcodes}.txt $PATH_QC_REPORT_DIR
@@ -214,6 +228,7 @@ do
         if [ "${#fastq_arr[@]}" -eq 0 ];then
           msg="couldn't find fastq files for sample $sample_name lane $lane, aborting process"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+          exit 1
         fi
 
         fastq_read1=''
@@ -249,6 +264,7 @@ do
       if [ "${#fastq_arr[@]}" -eq 0 ];then
         msg="couldn't find fastq files for sample $sample_name, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        exit 1
       fi
 
       if [ "${#fastq_arr[@]}" -eq 1 ];then
@@ -309,6 +325,7 @@ do
       if [ "${#ufastq_arr[@]}" -eq 0 ];then
         msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        exit 1
       fi
 
       if [ "${#ufastq_arr[@]}" -eq 1 ];then
@@ -339,6 +356,7 @@ do
     if [ "${#ufastq_arr[@]}" -eq 0 ];then
         msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        exit 1
     fi
 
     if [ "${#ufastq_arr[@]}" -eq 1 ];then

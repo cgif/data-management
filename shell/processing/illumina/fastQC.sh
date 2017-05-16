@@ -51,6 +51,11 @@ function fastqcSubmit {
   local fastq_read1=`basename $path_fastq_read1`
   local fastq_read2=`basename $path_fastq_read2`
 
+  if [ ! -s $fastq_read1 ]; then
+    msg='fastq1 is missing, aborting process'
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  fi
+
   #create temporary QC report output directory
   rm -rf $TMPDIR/qc
   mkdir $TMPDIR/qc
@@ -198,7 +203,7 @@ do
 
     # Hack for checking NextSeq dir, replace it with db check
     if [[ $SEQRUN_NAME =~ _NB501820_ ]];then
-      declare -a files=`find $dir -type f -name '*fastq.gz' -exec basename {} \;`
+      declare -a files=`find $path_reads_dir -type f -name '*fastq.gz' -exec basename {} \;`
       declare -a lanes=`echo "("; echo "${files[@]}"|sed 's/.*_\(L00[1-9]\)_.*/\1/g'|sort -u; echo ")"`
       
       for lane in ${lanes[@]}
@@ -206,12 +211,17 @@ do
         fastq_arr=''
         declare -a fastq_arr=`echo "("; echo "${files[@]}"|grep $lane; echo ")"`
 
+        if [ "${#fastq_arr[@]}" -eq 0 ];then
+          msg="couldn't find fastq files for sample $sample_name lane $lane, aborting process"
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+        fi
+
         fastq_read1=''
         fastq_read2=''
  
-        if [ ${#fastq_arr[@]} -eq 1 ];then
+        if [ "${#fastq_arr[@]}" -eq 1 ];then
           fastq_read1=${fastq_arr[0]}
-        elif [ ${#fastq_arr[@]} -eq 2 ];then
+        elif [ "${#fastq_arr[@]}" -eq 2 ];then
           fastq_read1=${fastq_arr[0]}
           fastq_read2=${fastq_arr[1]}
         else
@@ -236,9 +246,14 @@ do
       fastq_read1=''
       fastq_read2=''
     
-      if [ ${#fastq_arr[@]} -eq 1 ];then
+      if [ "${#fastq_arr[@]}" -eq 0 ];then
+        msg="couldn't find fastq files for sample $sample_name, aborting process"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+      fi
+
+      if [ "${#fastq_arr[@]}" -eq 1 ];then
         fastq_read1=${fastq_arr[0]}
-      elif [ ${#fastq_arr[@]} -eq 2 ];then
+      elif ["${#fastq_arr[@]}" -eq 2 ];then
         fastq_read1=${fastq_arr[0]}
         fastq_read2=${fastq_arr[1]}
       else

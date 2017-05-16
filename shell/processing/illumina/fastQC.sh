@@ -402,7 +402,7 @@ do
   chmod -R 770 $DATA_VOL_IGF/rawdata/seqrun/fastq/$SEQRUN_NAME
 
   summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
-  cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
+  cp $WORKFLOW_REPO_DIR/shell/pre_processing/fastqc/summary_fastqc.pl $summary_path
   chmod 770 $summary_path
   path_fastq_dir=$seqrun_rawdata_dir/Undetermined_indices
 
@@ -438,7 +438,7 @@ summary_path=$ms_runs_dir/summary.$SEQRUN_NAME.pl
 
 mkdir -p -m 770 $ms_runs_dir
 mkdir -p -m 770 $ms_results_dir
-cp $FASTQC_SCRIPT_DIR/summary_fastqc.pl $summary_path
+cp $WORKFLOW_REPO_DIR/shell/pre_processing/fastqc/summary_fastqc.pl $summary_path
 chmod 770 $summary_path
 
 path_fastq_dir=$project_rawdata_dir

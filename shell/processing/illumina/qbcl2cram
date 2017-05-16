@@ -65,6 +65,7 @@ WALLTIME_HOURS_PER_RUN_BWA=30
 
 FASTQC_SCRIPT_DIR=$BASEDIR
 WORKFLOWS_RESOURCES_DIR=$BASEDIR/../../../../workflows/shell/resources
+WORKFLOW_REPO_DIR=$BASEDIR/../../../../workflows/
 GROUP_VOL_CGI=/groupvol/cgi
 BWA_SCRIPTS_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa
 SPLIT_FASTQ_SCRIPT_DIR=$BASEDIR/../../../../workflows/shell/mapping/bwa/
@@ -321,6 +322,7 @@ function submitfastqcJobs {
     sed -i -e "s|#dataVolIgf|$DATA_VOL_IGF|" $fastQC_script_path
     sed -i -e "s|#toDay|$TODAY|" $fastQC_script_path
     sed -i -e "s|#seqrunDate|$SEQRUN_DATE|" $fastQC_script_path
+    sed -i -e "s|#workflowRepoDir|$WORKFLOW_REPO_DIR|" $fastQC_script_path
     sed -i -e "s|#fastqcScriptDir|$FASTQC_SCRIPT_DIR|" $fastQC_script_path
     sed -i -e "s|#slackUrl|$SLACK_URL|" $fastQC_script_path
     sed -i -e "s|#slackOpt|$SLACK_OPT|" $fastQC_script_path

@@ -31,10 +31,13 @@ TODAY=#toDay
 SEQRUN_NAME=#seqrunName
 SEQRUN_DATE=#seqrunDate
 FASTQC_SCRIPT_DIR=#fastqcScriptDir
+WORKFLOW_REPO_DIR=#workflowRepoDir
 
 SLACK_URL=#slackUrl
 SLACK_OPT=#slackOpt
 SLACK_TOKEN=#slackToken
+
+TODAY=`date +%Y-%m-%d`
 
 ############################################
 function fastqcSubmit {
@@ -155,10 +158,10 @@ chmod -R 770 $DATA_VOL_IGF/results/$PROJECT_NAME
 fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE
 ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment"  < /dev/null
 ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/project/$PROJECT_NAME"  < /dev/null
-scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
+scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
 
@@ -335,10 +338,10 @@ do
   fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
   ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment" < /dev/null
   ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME" < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/error.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/tick.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/warning.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/igf.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
   ssh $DEPLOYMENT_SERVER "chmod -R 664 $ufastqc_summary_deployment/*png" < /dev/null
 
   #create summary script from template

@@ -467,7 +467,7 @@ fi
 
 # MultiQC
 multiqc_path=$ms_runs_dir/multiqc.$SEQRUN_NAME.sh
-cp $FASTQC_SCRIPT_DIR/multiqc.sh $multiqc_path
+cp $WORKFLOW_REPO_DIR/shell/pre_processing/fastqc/multiqc.sh $multiqc_path
 chmod 770 $multiqc_path
 
 #configure multiqc script

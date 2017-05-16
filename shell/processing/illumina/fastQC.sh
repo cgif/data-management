@@ -49,7 +49,7 @@ function fastqcSubmit {
   local single_read='F'
 
   local fastq_read1=`basename $path_fastq_read1`
-  if [ "$path_fastq_read2" == '' ]; then
+  if [ "$path_fastq_read2" != "" ]; then
     local fastq_read2=`basename $path_fastq_read2`
   fi
 
@@ -68,20 +68,20 @@ function fastqcSubmit {
   #copy fastqs to tmp space
   cp $path_fastq_read1 $TMPDIR/fastq/$fastq_read1
   if [ $? -ne "0" ]; then
-    msg="ERROR while copying $fastq_read1"
+    msg="ERROR while copying R1 $fastq_read1"
     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
     exit 1
   fi
   
   # checks if FASTQ_READ2 exists. If doesn't exists assume RUN sigle read
-  if [ "$path_fastq_read2" == '' ]; then
+  if [ "$path_fastq_read2" == "" ]; then
     single_read="T"
   fi
 
   if [[ "$single_read" == "F" ]]; then
     cp $path_fastq_read2 $TMPDIR/fastq/$fastq_read2
     if [ $? -ne "0" ]; then
-      msg="ERROR while copying $fastq_read2"
+      msg="ERROR while copying R2 $fastq_read2"
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
     fi

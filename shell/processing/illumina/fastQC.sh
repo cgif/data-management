@@ -24,8 +24,7 @@ PROJECT_NAME=#projectName
 
 #deployment
 DEPLOYMENT_SERVER=#deploymentServer
-DEPLOYMENT_PATH=#deploymentPath
-SUMMARY_PATH=#summaryPath
+DEPLOYMENT_BASE_DIR=#deploymentBaseDir
 
 DATA_VOL_IGF=#dataVolIgf
 TODAY=#toDay
@@ -37,6 +36,105 @@ SLACK_URL=#slackUrl
 SLACK_OPT=#slackOpt
 SLACK_TOKEN=#slackToken
 
+############################################
+function fastqcSubmit {
+  local path_qc_report_dir=$1
+  local deployment_path=$2
+  local path_fastq_read1=$3
+  local path_fastq_read2=$4
+
+  local single_read='F'
+
+  local fastq_read1=`basename $path_fastq_read1`
+  local fastq_read2=`basename $path_fastq_read2`
+
+  #create temporary QC report output directory
+  rm -rf $TMPDIR/qc
+  mkdir $TMPDIR/qc
+
+  #copy fastqs to tmp space
+  cp $path_fastq_read1 $TMPDIR/$fastq_read1
+
+  # checks if FASTQ_READ2 exists. If doesn't exists assume RUN sigle read
+  if [ ! -f "$fastq_read2" ]; then
+    $single_read="T"
+  fi
+
+  if [[ "$single_read" == "F" ]]; then
+    cp $path_fastq_read2 $TMPDIR/$fastq_read2
+  fi
+           
+  #check if mate file found and the number of lines in mate files is the same
+  gzip -t $TMPDIR/$fastq_read1
+  if [ $? -ne "0" ]; then
+    msg="ERROR:File $fastq_read1 is corrupted. Skipped" 
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+  fi
+
+  if [[ "$single_read" == "F" ]]; then
+    gzip -t $TMPDIR/$fastq_read2
+    if [ $? -ne "0" ]; then
+      msg="ERROR:File $FASTQ_READ2 is corrupted. Skipped." 
+      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    else 
+      local count_lines_read1=`gzip -d -c $TMPDIR/$fastq_read1 | wc -l | cut -f 1 -d ' '`
+      local count_lines_read2=`gzip -d -c $TMPDIR/$fastq_read2 | wc -l | cut -f 1 -d ' '`
+
+      if [ "$count_lines_read1" -ne "$count_lines_read2" ]; then
+        msg="ERROR:Unequal number of lines in the mate files. Skipped." 
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+      else
+        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
+	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read2
+			
+      fi	
+    fi
+  else
+    #run FastQC for single reads
+    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
+  fi
+
+  # if Undetermined fastq file
+  if [[ $fastq_read1 == *"Undetermined"* ]]
+  then 
+    #try to find the correct barcode
+    barcodes=`echo $fastq_read1 | perl -pe 's/_R1//g'`
+    zcat $TMPDIR/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/${barcodes}.txt
+
+    #copies barcode file in the results directory
+    cp $TMPDIR/qc/${barcodes}.txt $PATH_QC_REPORT_DIR
+  fi
+
+  #copy results to output folder
+  cp $TMPDIR/qc/*zip $PATH_QC_REPORT_DIR
+  chmod 660 $PATH_QC_REPORT_DIR/*zip
+
+  ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $deployment_path" < /dev/null
+
+  for zip in `ls $TMPDIR/qc/*.zip`
+  do
+    unzip $zip
+    local report_dir=`basename $zip .zip`	
+    #add to the report the link to the list of samples
+    sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $report_dir/fastqc_report.html
+    #if udetermined fastq file add a link in the report to the files listing possible indexes
+    if [[ $zip == *"Undetermined"* ]]
+    then
+      #copies barcode file in the report directory
+      cp $TMPDIR/qc/${barcodes}.txt $report_dir
+      sed -i 's/<\/ul>/<li><a href=\"'${barcodes}'\.txt">Barcode<\/a><\/li><\/ul>/g' $report_dir/fastqc_report.html
+    fi
+    scp -r $TMPDIR/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null 
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir" < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*"  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*/*"  < /dev/null
+
+    mkdir -p -m 770 $path_qc_report_dir/$report_dir
+    cp $TMPDIR/$report_dir/*.txt  $path_qc_report_dir/$report_dir
+    chmod 660 $path_qc_report_dir/$report_dir/*.txt
+
+  done
+}
 ############################################
 # PROJECT
 
@@ -121,9 +219,9 @@ do
 
         # Submit fastqc jobs for NextSeq platform
         if [ "$fastq_read2" -ne '' ];then
-          fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
         else
-          fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
         fi
       done
 
@@ -147,9 +245,9 @@ do
       fi
 
       if [ "$fastq_read2" -ne '' ];then
-        fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
+        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
       else
-        fastqcSubmit $qc_report_outputdir $path_reads_dir/$fastq_read1 $fastq_read2
+        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
       fi
     fi
             
@@ -202,9 +300,9 @@ do
 
       # Submit fastqc jobs for NextSeq platform  
       if [ "$ufastq_read2" -ne '' ];then
-        fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
+        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
       else
-        fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
       fi
     done
   else
@@ -226,9 +324,9 @@ do
     fi
 
     if [ "$ufastq_read2" -ne '' ];then
-      fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
+      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
     else
-      fastqcSubmit $uqc_report_outputdir $upath_reads_dir/$ufastq_read1 $ufastq_read2
+      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
     fi
   fi
 
@@ -237,11 +335,11 @@ do
   fastqc_summary_deployment=$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/fastqc/$SEQRUN_DATE
   ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $fastqc_summary_deployment" < /dev/null
   ssh $DEPLOYMENT_SERVER "chmod -R 775 $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME" < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
-  ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/error.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/tick.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/warning.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  scp -r ${FASTQC_SCRIPT_DIR}/../../resources/images/igf.png $DEPLOYMENT_SERVER:$ufastqc_summary_deployment/ < /dev/null
+  ssh $DEPLOYMENT_SERVER "chmod -R 664 $ufastqc_summary_deployment/*png" < /dev/null
 
   #create summary script from template
   seqrun_runs_dir=$DATA_VOL_IGF/runs/seqrun/$SEQRUN_NAME/fastqc/$TODAY
@@ -267,7 +365,7 @@ do
   sed -i -e "s|#pathRunsDir|${seqrun_runs_dir}|" $summary_path
   sed -i -e "s|#pathMSReportsDir|${ms_results_dir}|" $summary_path
   sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $summary_path
-  sed -i -e "s|#summaryDeployment|${fastqc_summary_deployment}|" $summary_path
+  sed -i -e "s|#summaryDeployment|${ufastqc_summary_deployment}|" $summary_path
   log_output_path=`echo $summary_path | perl -pe 's/\.pl/\.log/g'`
 
   # run summary script per lane
@@ -349,101 +447,3 @@ msg="fastqc report for $PROJECT_NAME  $SEQRUN_DATE is available, http://eliot.me
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 
-############################################
-function fastqcSubmit {
-  local path_qc_report_dir=$1
-  local path_fastq_read1=$2
-  local path_fastq_read2=$3
-
-  local single_read='F'
-
-  local fastq_read1=`basename $path_fastq_read1`
-  local fastq_read2=`basename $path_fastq_read2`
-
-  #create temporary QC report output directory
-  rm -rf $TMPDIR/qc
-  mkdir $TMPDIR/qc
-
-  #copy fastqs to tmp space
-  cp $path_fastq_read1 $TMPDIR/$fastq_read1
-
-  # checks if FASTQ_READ2 exists. If doesn't exists assume RUN sigle read
-  if [ ! -f "$fastq_read2" ]; then
-    $single_read="T"
-  fi
-
-  if [[ "$single_read" == "F" ]]; then
-    cp $path_fastq_read2 $TMPDIR/$fastq_read2
-  fi
-           
-  #check if mate file found and the number of lines in mate files is the same
-  gzip -t $TMPDIR/$fastq_read1
-  if [ $? -ne "0" ]; then
-    msg="ERROR:File $fastq_read1 is corrupted. Skipped" 
-    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-  fi
-
-  if [[ "$single_read" == "F" ]]; then
-    gzip -t $TMPDIR/$fastq_read2
-    if [ $? -ne "0" ]; then
-      msg="ERROR:File $FASTQ_READ2 is corrupted. Skipped." 
-      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-    else 
-      local count_lines_read1=`gzip -d -c $TMPDIR/$fastq_read1 | wc -l | cut -f 1 -d ' '`
-      local count_lines_read2=`gzip -d -c $TMPDIR/$fastq_read2 | wc -l | cut -f 1 -d ' '`
-
-      if [ "$count_lines_read1" -ne "$count_lines_read2" ]; then
-        msg="ERROR:Unequal number of lines in the mate files. Skipped." 
-        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-      else
-        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
-	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read2
-			
-      fi	
-    fi
-  else
-    #run FastQC for single reads
-    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/$fastq_read1
-  fi
-
-  # if Undetermined fastq file
-  if [[ $fastq_read1 == *"Undetermined"* ]]
-  then 
-    #try to find the correct barcode
-    barcodes=`echo $fastq_read1 | perl -pe 's/_R1//g'`
-    zcat $TMPDIR/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/${barcodes}.txt
-
-    #copies barcode file in the results directory
-    cp $TMPDIR/qc/${barcodes}.txt $PATH_QC_REPORT_DIR
-  fi
-
-  #copy results to output folder
-  cp $TMPDIR/qc/*zip $PATH_QC_REPORT_DIR
-  chmod 660 $PATH_QC_REPORT_DIR/*zip
-
-  ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $DEPLOYMENT_PATH" < /dev/null
-
-  for zip in `ls $TMPDIR/qc/*.zip`
-  do
-    unzip $zip
-    local report_dir=`basename $zip .zip`	
-    #add to the report the link to the list of samples
-    sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $report_dir/fastqc_report.html
-    #if udetermined fastq file add a link in the report to the files listing possible indexes
-    if [[ $zip == *"Undetermined"* ]]
-    then
-      #copies barcode file in the report directory
-      cp $TMPDIR/qc/${barcodes}.txt $report_dir
-      sed -i 's/<\/ul>/<li><a href=\"'${barcodes}'\.txt">Barcode<\/a><\/li><\/ul>/g' $report_dir/fastqc_report.html
-    fi
-    scp -r $TMPDIR/$report_dir $DEPLOYMENT_SERVER:$DEPLOYMENT_PATH/  < /dev/null 
-    ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$report_dir" < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$report_dir/*"  < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $DEPLOYMENT_PATH/$report_dir/*/*"  < /dev/null
-
-    mkdir -p -m 770 $path_qc_report_dir/$report_dir
-    cp $TMPDIR/$report_dir/*.txt  $path_qc_report_dir/$report_dir
-    chmod 660 $path_qc_report_dir/$report_dir/*.txt
-
-  done
-}

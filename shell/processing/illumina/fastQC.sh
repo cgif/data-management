@@ -306,9 +306,14 @@ do
       ufastq_read1=''
       ufastq_read2=''
  
-      if [ ${#ufastq_arr[@]} -eq 1 ];then
+      if [ "${#ufastq_arr[@]}" -eq 0 ];then
+        msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+      fi
+
+      if [ "${#ufastq_arr[@]}" -eq 1 ];then
         ufastq_read1=${ufastq_arr[0]}
-      elif [ ${#ufastq_arr[@]} -eq 2 ];then
+      elif [ "${#ufastq_arr[@]}" -eq 2 ];then
         ufastq_read1=${ufastq_arr[0]}
         ufastq_read2=${ufastq_arr[1]}
       else
@@ -331,9 +336,14 @@ do
     ufastq_read1=''
     ufastq_read2=''
 
-    if [ ${#ufastq_arr[@]} -eq 1 ];then
+    if [ "${#ufastq_arr[@]}" -eq 0 ];then
+        msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
+        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    fi
+
+    if [ "${#ufastq_arr[@]}" -eq 1 ];then
       ufastq_read1=${ufastq_arr[0]}
-    elif [ ${#ufastq_arr[@]} -eq 2 ];then
+    elif [ "${#ufastq_arr[@]}" -eq 2 ];then
       ufastq_read1=${ufastq_arr[0]}
       ufastq_read2=${ufastq_arr[1]}
     else

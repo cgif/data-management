@@ -94,7 +94,7 @@ do
      iput -k -fP -N 4 -X $TMPDIR/restartFile.$lane_dir --retries 3 -R woolfResc $TMPDIR/${seq_run_date_lane}.tar  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
 
      retval=$?
-     if [ $retval -ne 0 ]; then
+     if [ "$retval" -ne 0 ]; then
        msg="subject:Sequencing Data for project $PROJECT_TAG Processing Error. Processing aborted."
        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
        exit 1
@@ -118,9 +118,8 @@ do
    rm -f $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 done
 
-ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
-retval=$?
-if [ $retval -ne 0 ]; then
+ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep -w "uid: $customer_username"|wc -l`
+if [ "$ldapUser" -ne 0 ]; then
     echo "External customer"
     externalUser="Y"
 fi

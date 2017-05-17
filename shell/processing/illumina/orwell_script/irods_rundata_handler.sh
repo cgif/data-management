@@ -122,7 +122,7 @@ do
         fi
 
         # Check for non-hpc users
-        ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep $customer_username|wc -l"`
+        ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep -w $customer_username|wc -l"`
 
         if [ "$ldapUser" -eq 0 ]; then
           msg="customer $customer_username dosn't have hpc access"

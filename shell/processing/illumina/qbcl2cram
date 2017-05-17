@@ -158,34 +158,34 @@ function submitbcl2fastqJobs {
         echo $BASE_PYTHON_DIR
         total_threads=`expr $BCL2FASTQ_LOADING_THREADS + $BCL2FASTQ_PROCESSING_THREADS + $BCL2FASTQ_WRITING_THREADS`
 
-	sed -i -e "s/#walltimeHours/$WALLTIME_HOURS_PER_JOB_BCL2FASTQ/" $bcl2fastq_script
-	sed -i -e "s/#required_memory/$MEMORY_PER_BCL2FASTQ_JOB/" $bcl2fastq_script
+	sed -i -e "s|#walltimeHours|$WALLTIME_HOURS_PER_JOB_BCL2FASTQ|" $bcl2fastq_script
+	sed -i -e "s|#required_memory|$MEMORY_PER_BCL2FASTQ_JOB|" $bcl2fastq_script
 	sed -i -e "s|#base_python_dir|$BASE_PYTHON_DIR|" $bcl2fastq_script
-	sed -i -e "s/#threads/$total_threads/" $bcl2fastq_script
-	sed -i -e "s/#loading_threads/$BCL2FASTQ_LOADING_THREADS/" $bcl2fastq_script
-	sed -i -e "s/#processing_threads/$BCL2FASTQ_PROCESSING_THREADS/" $bcl2fastq_script
-	sed -i -e "s/#writing_threads/$BCL2FASTQ_WRITING_THREADS/" $bcl2fastq_script
-	sed -i -e "s/#runName/$SEQRUN_NAME/" $bcl2fastq_script
-	sed -i -e "s/#pathSampleSheet/${path_sample_sheet_reformatted//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#lane/$tlane/" $bcl2fastq_script
-	sed -i -e "s/#basesMask/$bases_mask/" $bcl2fastq_script
-	sed -i -e "s/#tmpSpace/$TMP_SPACE_GB_BCL2FASTQ/" $bcl2fastq_script
-	sed -i -e "s/#queue/$QUEUE/" $bcl2fastq_script
-	sed -i -e "s/#pathSeqRunDir/${seqrun_directory//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#dataVolIgf/${DATA_VOL_IGF//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#bcl2FastqVersion/$BCL2FASTQ_VERSION/" $bcl2fastq_script
-	sed -i -e "s/#pathRunDir/${PATH_RUN_DIR_BCL2FASTQ//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#pathResultsDir/${PATH_RESULTS_DIR_BCL2FASTQ//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#pathRawDataDir/${PATH_RAWDATA_DIR//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#deploymentServer/${DEPLOYMENT_SERVER//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#deploymentPath/${bcl2fastq_summary_deployment//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#pathAdapterDir/${PATH_ADAPTER_DIR//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#adapterType/$adapter_type/" $bcl2fastq_script
-	sed -i -e "s/#pathTemplateHtm/${TEMPLATE_PATH//\//\\/}/" $bcl2fastq_script
-	sed -i -e "s/#mixedIndexes/$mixedIndexes/" $bcl2fastq_script
-	sed -i -e "s/#ilane/$lane/" $bcl2fastq_script
-	sed -i -e "s/#removeAdaptors/$REMOVE_ADAPTORS/" $bcl2fastq_script
-	sed -i -e "s/#slackToken/$SLACK_TOKEN/" $bcl2fastq_script
+	sed -i -e "s|#threads|$total_threads|" $bcl2fastq_script
+	sed -i -e "s|#loading_threads|$BCL2FASTQ_LOADING_THREADS|" $bcl2fastq_script
+	sed -i -e "s|#processing_threads|$BCL2FASTQ_PROCESSING_THREADS|" $bcl2fastq_script
+	sed -i -e "s|#writing_threads|$BCL2FASTQ_WRITING_THREADS|" $bcl2fastq_script
+	sed -i -e "s|#runName|$SEQRUN_NAME|" $bcl2fastq_script
+	sed -i -e "s|#pathSampleSheet|${path_sample_sheet_reformatted}|" $bcl2fastq_script
+	sed -i -e "s|#lane|$tlane|" $bcl2fastq_script
+	sed -i -e "s|#basesMask|$bases_mask|" $bcl2fastq_script
+	sed -i -e "s|#tmpSpace|$TMP_SPACE_GB_BCL2FASTQ|" $bcl2fastq_script
+	sed -i -e "s|#queue|$QUEUE|" $bcl2fastq_script
+	sed -i -e "s|#pathSeqRunDir|${seqrun_directory}|" $bcl2fastq_script
+	sed -i -e "s|#dataVolIgf|${DATA_VOL_IGF}|" $bcl2fastq_script
+	sed -i -e "s|#bcl2FastqVersion|$BCL2FASTQ_VERSION|" $bcl2fastq_script
+	sed -i -e "s|#pathRunDir|${PATH_RUN_DIR_BCL2FASTQ}|" $bcl2fastq_script
+	sed -i -e "s|#pathResultsDir|${PATH_RESULTS_DIR_BCL2FASTQ}|" $bcl2fastq_script
+	sed -i -e "s|#pathRawDataDir|${PATH_RAWDATA_DIR}|" $bcl2fastq_script
+	sed -i -e "s|#deploymentServer|${DEPLOYMENT_SERVER}|" $bcl2fastq_script
+	sed -i -e "s|#deploymentPath|${bcl2fastq_summary_deployment}|" $bcl2fastq_script
+	sed -i -e "s|#pathAdapterDir|${PATH_ADAPTER_DIR}|" $bcl2fastq_script
+	sed -i -e "s|#adapterType|$adapter_type|" $bcl2fastq_script
+	sed -i -e "s|#pathTemplateHtm|${TEMPLATE_PATH}|" $bcl2fastq_script
+	sed -i -e "s|#mixedIndexes|$mixedIndexes|" $bcl2fastq_script
+	sed -i -e "s|#ilane|$lane|" $bcl2fastq_script
+	sed -i -e "s|#removeAdaptors|$REMOVE_ADAPTORS|" $bcl2fastq_script
+	sed -i -e "s|#slackToken|$SLACK_TOKEN|" $bcl2fastq_script
 
 	local log_path=`echo $bcl2fastq_script | perl -pe 's/\.sh/\.log/g'`
 	local job_id=null
@@ -225,7 +225,7 @@ function submitIrodsDeployFastq {
                             chmod 770 $PATH_RUN_DIR_BCL2FASTQ
                             echo $sample_lane >>  $PATH_RUN_DIR_BCL2FASTQ/$project_name.prj
                         else
-                            msg="couldn't identify the sample_col or project_col, stopping irods upload"
+                            msg="can not identify the sample_col or project_col, stopping irods upload"
                             res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
                             exit 1
                         fi
@@ -252,15 +252,15 @@ function submitIrodsDeployFastq {
 
                         chmod 770 $deploy_irods_fastq_script
                         path_project_tag_dir=$DATA_VOL_IGF/rawdata/$project_tag/fastq
-                        sed -i -e "s/#pathProjectTagDir/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
-                        sed -i -e "s/#seqRunDate/$SEQRUN_DATE/" $deploy_irods_fastq_script
-                        sed -i -e "s/#seqRunName/$SEQRUN_NAME/" $deploy_irods_fastq_script
-                        sed -i -e "s/#runDirBcl2Fastq/${PATH_RUN_DIR_BCL2FASTQ//\//\\/}/" $deploy_irods_fastq_script
-                        sed -i -e "s/#customerFilePath/${INPUT_SEQRUN_DIR//\//\\/}/" $deploy_irods_fastq_script
-                        sed -i -e "s/#projectTag/$project_tag/" $deploy_irods_fastq_script
-                        sed -i -e "s/#mailTemplatePath/${TEMPLATE_PATH//\//\\/}/" $deploy_irods_fastq_script
-                        sed -i -e "s/#pathToDestination/${path_project_tag_dir//\//\\/}/" $deploy_irods_fastq_script
-	                sed -i -e "s/#slackToken/$SLACK_TOKEN/" $deploy_irods_fastq_script
+                        sed -i -e "s|#pathProjectTagDir|${path_project_tag_dir}|" $deploy_irods_fastq_script
+                        sed -i -e "s|#seqRunDate|$SEQRUN_DATE|" $deploy_irods_fastq_script
+                        sed -i -e "s|#seqRunName|$SEQRUN_NAME|" $deploy_irods_fastq_script
+                        sed -i -e "s|#runDirBcl2Fastq|${PATH_RUN_DIR_BCL2FASTQ}|" $deploy_irods_fastq_script
+                        sed -i -e "s|#customerFilePath|${INPUT_SEQRUN_DIR}|" $deploy_irods_fastq_script
+                        sed -i -e "s|#projectTag|$project_tag|" $deploy_irods_fastq_script
+                        sed -i -e "s|#mailTemplatePath|${TEMPLATE_PATH}|" $deploy_irods_fastq_script
+                        sed -i -e "s|#pathToDestination|${path_project_tag_dir}|" $deploy_irods_fastq_script
+	                sed -i -e "s|#slackToken|$SLACK_TOKEN|" $deploy_irods_fastq_script
 
                         ####### XXXXXXXXXXX
                         sed -i -e "s/#useIrods/$USE_IRODS/" $deploy_irods_fastq_script
@@ -307,12 +307,10 @@ function submitfastqcJobs {
     sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $fastQC_script_path
     sed -i -e "s|#deploymentBaseDir|$DEPLOYMENT_BASE_DIR|" $fastQC_script_path
     sed -i -e "s|#dataVolIgf|$DATA_VOL_IGF|" $fastQC_script_path
-    sed -i -e "s|#toDay|$TODAY|" $fastQC_script_path
+    sed -i -e "s|#seqrunName|$SEQRUN_NAME|" $fastQC_script_path
     sed -i -e "s|#seqrunDate|$SEQRUN_DATE|" $fastQC_script_path
     sed -i -e "s|#workflowRepoDir|$WORKFLOW_REPO_DIR|" $fastQC_script_path
     sed -i -e "s|#fastqcScriptDir|$FASTQC_SCRIPT_DIR|" $fastQC_script_path
-    sed -i -e "s|#slackUrl|$SLACK_URL|" $fastQC_script_path
-    sed -i -e "s|#slackOpt|$SLACK_OPT|" $fastQC_script_path
     sed -i -e "s|#slackToken|$SLACK_TOKEN|" $fastQC_script_path
 
     #submit job

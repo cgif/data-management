@@ -33,8 +33,8 @@ SEQRUN_DATE=#seqrunDate
 FASTQC_SCRIPT_DIR=#fastqcScriptDir
 WORKFLOW_REPO_DIR=#workflowRepoDir
 
-SLACK_URL=#slackUrl
-SLACK_OPT=#slackOpt
+SLACK_URL=https://slack.com/api/chat.postMessage
+SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_bot'"
 SLACK_TOKEN=#slackToken
 
 TODAY=`date +%Y-%m-%d`
@@ -226,7 +226,7 @@ do
         declare -a fastq_arr=`echo "("; echo "${files[@]}"|grep $lane; echo ")"`
 
         if [ "${#fastq_arr[@]}" -eq 0 ];then
-          msg="couldn't find fastq files for sample $sample_name lane $lane, aborting process"
+          msg="can not find fastq files for sample $sample_name lane $lane, aborting process"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
           exit 1
         fi
@@ -240,7 +240,7 @@ do
           fastq_read1=${fastq_arr[0]}
           fastq_read2=${fastq_arr[1]}
         else
-          msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
+          msg="can not assign fastq files type for files in $path_reads_dir; aborting process"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
           exit 1
         fi
@@ -262,7 +262,7 @@ do
       fastq_read2=''
     
       if [ "${#fastq_arr[@]}" -eq 0 ];then
-        msg="couldn't find fastq files for sample $sample_name, aborting process"
+        msg="can not find fastq files for sample $sample_name, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
       fi
@@ -273,7 +273,7 @@ do
         fastq_read1=${fastq_arr[0]}
         fastq_read2=${fastq_arr[1]}
       else
-        msg="couldn't assign fastq files type for files in $path_reads_dir; aborting process"
+        msg="can not assign fastq files type for files in $path_reads_dir; aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
       fi
@@ -323,7 +323,7 @@ do
       ufastq_read2=''
  
       if [ "${#ufastq_arr[@]}" -eq 0 ];then
-        msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
+        msg="can not find undetermined fastq files for lane $lane_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
       fi
@@ -334,7 +334,7 @@ do
         ufastq_read1=${ufastq_arr[0]}
         ufastq_read2=${ufastq_arr[1]}
       else
-        msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
+        msg="can not assign fastq files type for files in $upath_reads_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
       fi
@@ -354,7 +354,7 @@ do
     ufastq_read2=''
 
     if [ "${#ufastq_arr[@]}" -eq 0 ];then
-        msg="couldn't find undetermined fastq files for lane $lane_dir, aborting process"
+        msg="can not find undetermined fastq files for lane $lane_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
     fi
@@ -365,7 +365,7 @@ do
       ufastq_read1=${ufastq_arr[0]}
       ufastq_read2=${ufastq_arr[1]}
     else
-      msg="couldn't assign fastq files type for files in $upath_reads_dir, aborting process"
+      msg="can not assign fastq files type for files in $upath_reads_dir, aborting process"
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
     fi

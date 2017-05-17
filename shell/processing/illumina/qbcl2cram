@@ -237,6 +237,7 @@ function submitIrodsDeployFastq {
                         #for each lane in project_tag
                         local tarresults_job_dependency="afterok"
 
+                        
                         for projectTagRow in `cat $PATH_RUN_DIR_BCL2FASTQ/$project_file | sort -u`
                         do
                                 chmod 660 $PATH_RUN_DIR_BCL2FASTQ/$project_file
@@ -318,7 +319,7 @@ function submitfastqcJobs {
     # Configure fastqc script
     sed -i -e "s|#projectName|$project|" $fastQC_script_path
     sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $fastQC_script_path
-    sed -i -e "s|#deploymentPath|$fastqc_deployment_path|" $fastQC_script_path
+    sed -i -e "s|#deploymentBaseDir|$DEPLOYMENT_BASE_DIR|" $fastQC_script_path
     sed -i -e "s|#dataVolIgf|$DATA_VOL_IGF|" $fastQC_script_path
     sed -i -e "s|#toDay|$TODAY|" $fastQC_script_path
     sed -i -e "s|#seqrunDate|$SEQRUN_DATE|" $fastQC_script_path

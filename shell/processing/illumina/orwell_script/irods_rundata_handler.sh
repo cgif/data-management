@@ -35,7 +35,7 @@ LOG=/home/igf/log/seqrun_processing/$RUN_NAME.log
 
 HOST=login.cx1.hpc.ic.ac.uk
 DATA_VOL_IGF=/project/tgu
-PATH_BCL2CRAM_SCRIPT=/project/tgu/src/data-management/shell/processing/illumina/qbcl2cram
+PATH_BCL2CRAM_SCRIPT=/work/adatta17/git_repo/data-management/shell/processing/illumina/qbcl2cram
 
 DEPLOYMENT_HOST=eliot.med.ic.ac.uk
 DEPLOYMENT_PATH=/www/html/report/project
@@ -122,10 +122,10 @@ do
         fi
 
         # Check for non-hpc users
-        ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep $customer_username"`
+        ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep $customer_username|wc -l"`
 
         retval=$?
-        if [ $retval -ne 0 ]; then
+        if [ "$retval" -ne 0 ]; then
           msg="customer $customer_username dosn't have hpc access"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
           externalUser="Y"

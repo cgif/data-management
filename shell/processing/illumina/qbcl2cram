@@ -237,25 +237,11 @@ function submitIrodsDeployFastq {
                         #for each lane in project_tag
                         local tarresults_job_dependency="afterok"
 
+                        local bcl2fastq_job_id=`cut -f2 -d',' $BCL2FASTQ_JOB_ID_LIST|xargs -i basename {} '.cx1b'|xargs echo -n|sed 's/ /:/g'`
+                        tarresults_job_dependency="$tarresults_job_dependency:$bcl2fastq_job_id"
                         
-                        for projectTagRow in `cat $PATH_RUN_DIR_BCL2FASTQ/$project_file | sort -u`
-                        do
-                                chmod 660 $PATH_RUN_DIR_BCL2FASTQ/$project_file
-                                local lane=`echo $projectTagRow | perl -pe 's/\s//g'`
-
-                                while read jobListRow
-                                do
-                                        #get job_id and verify if it is based ong project_tag
-                                        local bcl2fastq_job_id=`echo $jobListRow | cut -f2 -d ','| perl -pe 's/\s//g'`
-
-                                        #collect job ids for dependency variable
-                                        job_id=`basename $bcl2fastq_job_id .cx1b`
-                                        tarresults_job_dependency="$tarresults_job_dependency:$job_id"
-
-                                done <$BCL2FASTQ_JOB_ID_LIST
-                        done
                         #########################################
-                        ### create e configure tarJobScript ####
+                        ### create  configure tarJobScript ####
                         local project_tag=`basename $project_file .prj`
                         local deploy_irods_fastq_script=$PATH_RUN_DIR_BCL2FASTQ/irods_deploy_fastq.${project_tag}.sh
                         local deployment_symbolic_link=/www/html/report/project/$project_tag

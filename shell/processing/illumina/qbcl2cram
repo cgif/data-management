@@ -304,7 +304,7 @@ function submitfastqcJobs {
 
     # Configure fastqc script
     sed -i -e "s|#projectName|$project|" $fastQC_script_path
-    sed -i -e "s|#deploymentServer|$DEPLOYMENT_SERVER|" $fastQC_script_path
+    sed -i -e "s|#deploymentServerName|$DEPLOYMENT_SERVER|" $fastQC_script_path
     sed -i -e "s|#deploymentBaseDir|$DEPLOYMENT_BASE_DIR|" $fastQC_script_path
     sed -i -e "s|#dataVolIgf|$DATA_VOL_IGF|" $fastQC_script_path
     sed -i -e "s|#seqrunName|$SEQRUN_NAME|" $fastQC_script_path

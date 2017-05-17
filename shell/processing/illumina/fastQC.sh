@@ -23,11 +23,10 @@ module load fastqc/0.11.2
 PROJECT_NAME=#projectName
 
 #deployment
-DEPLOYMENT_SERVER=#deploymentServer
+DEPLOYMENT_SERVER=#deploymentServerName
 DEPLOYMENT_BASE_DIR=#deploymentBaseDir
 
 DATA_VOL_IGF=#dataVolIgf
-TODAY=#toDay
 SEQRUN_NAME=#seqrunName
 SEQRUN_DATE=#seqrunDate
 FASTQC_SCRIPT_DIR=#fastqcScriptDir

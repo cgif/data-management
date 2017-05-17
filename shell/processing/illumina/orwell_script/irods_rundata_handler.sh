@@ -124,8 +124,7 @@ do
         # Check for non-hpc users
         ldapUser=`ssh $SSH_USER@$HOST "ldapsearch -x -h unixldap.cc.ic.ac.uk | grep uid:|grep $customer_username|wc -l"`
 
-        retval=$?
-        if [ "$retval" -ne 0 ]; then
+        if [ "$ldapUser" -eq 0 ]; then
           msg="customer $customer_username dosn't have hpc access"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
           externalUser="Y"

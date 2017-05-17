@@ -111,98 +111,60 @@ do
 
           chmod 660 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
 
+          msg="copying Stats and Reports to $PROJECT_DIR $ILANE"
+          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
+          cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
+          cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
+
+          # Store current working directory
+          WORKING_DIR=$PWD
+
 	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 	  do
-		#...parse sample name
-		SAMPLE_ID=$SAMPLE_DIR_NAME
-		echo "`$NOW`$SAMPLE_ID"
-
-                # hack for getting sample name
-                sample_name_col=0
-                sample_id_col=0
-                rowcount=0
-
-                for sampleSheetRow in `awk 'BEGIN{data_block=0}{if($0 ~ /^\[Data\]/){data_block=1; next}if(data_block==1){print $0}}' $PATH_SAMPLE_SHEET`
-                do
-                    rowcount=$(( $rowcount + 1 ))
-                    if [ "$rowcount" -eq "1" ]; then
-                      sample_name_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_Name' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
-                      sample_id_col=`echo $sampleSheetRow | awk -F',' -v tag='Sample_ID' '{ for(i=1;i<=NF;i++){if($i ~ tag){print i}}}'`
-                      continue
-                    fi
-                    if [ "$sample_name_col" -gt 0 ] && [ "$sample_id_col" -gt 0 ]; then
-                      sample_name_val=`echo $sampleSheetRow |cut -d',' -f${sample_name_col}`
-                      sample_id_val=`echo $sampleSheetRow |cut -d',' -f${sample_id_col}`
-
-                      if [ "$sample_id_val" == "$SAMPLE_ID" ]; then
-                        SAMPLE_NAME=$sample_name_val
-                      fi
-                    else
-                      msg="sample id and name column not found, stopping file move for $PROJECT_DIR"
-                      res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-                      exit 1
-                    fi
-                done
-
-                if [ ! $sample_id_val ]; then
-                  msg="sample id not found, stopping fastq move for $PROJECT_DIR, aborting process"
-                  res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-                  exit 1
-                fi
-
-                msg="creating dir structure for $PROJECT_DIR $ILANE $sample_id_val"
-                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
-		SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
-		mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$sample_id_val
-		chmod -R 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq
-
-                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Reports
-                mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/Stats
+            # SAMPLE
+            msg="creating dir structure for $PROJECT_DIR $ILANE $SAMPLE_DIR_NAME"
+            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
  
-                msg="copying Stats and Reports to $PROJECT_DIR $ILANE"
-                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+            # Set source dir
+            SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
+ 
+            # Set destination directory path
+            DESTINATION_DIR=$PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_DIR_NAME
 
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
-                cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
-                 
-                #set destination directory path
-		DESTINATION_DIR=$PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$sample_id_val
-
-		#store current working directory
-		WORKING_DIR=$PWD
-			
-		#change to sample directory
-		cd $SAMPLE_DIR_PATH
+            mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/$SAMPLE_DIR_NAME
+            chmod -R 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq
+		
+	    # Change to sample directory
+	    cd $SAMPLE_DIR_PATH
                   
+            msg="copying fastq files for $PROJECT_DIR $ILANE $sample_id_val"
+            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
-                msg="copying fastq files for $PROJECT_DIR $ILANE $sample_id_val"
-                res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-			
-		#this file contains the sample under the threshold of reads
-		for FASTQ_FILE in `ls --color=never *.fastq*.gz`
-		do
-			#...make fastq output file name
-			FASTQ_FILE=`basename $FASTQ_FILE`
-                        FASTQ_NAME="${RUN_NAME}_${FASTQ_FILE}"
-                      
-                        mv $FASTQ_FILE $FASTQ_NAME
-			md5sum $FASTQ_NAME > $FASTQ_NAME.md5
-			
-			#fastq
-			cp -av $FASTQ_NAME $DESTINATION_DIR/ 				
-			chmod 660 $DESTINATION_DIR/$FASTQ_NAME
+            for FASTQ_FILE in `find . -type f -name '*.fastq*.gz' -exec basename {} \;`
+            do
+              # FASTQ FILE
+              FASTQ_NAME="${RUN_NAME}_${FASTQ_FILE}"
+             
+              mv $FASTQ_FILE $FASTQ_NAME
 
-			#md5
-			cp -v $FASTQ_NAME.md5 $DESTINATION_DIR/ 				
-			chmod 660 $DESTINATION_DIR/$FASTQ_NAME.md5
+              md5sum $FASTQ_NAME > $FASTQ_NAME.md5
 
-		done
-		cd $WORKING_DIR
-	  done
-      fi
+              # Copy fastq
+              cp $FASTQ_NAME $DESTINATION_DIR/ 
+              chmod 550 $DESTINATION_DIR/$FASTQ_NAME
+  
+              # Copy md5
+              cp $FASTQ_NAME.md5 $DESTINATION_DIR/ 
+              chmod 550 $DESTINATION_DIR/$FASTQ_NAME.md5 
+            done			
+            # SAMPLE
+            cd $WORKING_DIR
+          done  
+        fi
 done
-
 
 msg="finished fastq move for $RUN_NAME/$ILANE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
+

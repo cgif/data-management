@@ -118,6 +118,13 @@ do
    rm -f $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 done
 
+ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep "uid: $customer_username"`
+retval=$?
+if [ $retval -ne 0 ]; then
+    echo "External customer"
+    externalUser="Y"
+fi
+
 if [ "$USE_IRODS" = "T" ];then
   # Change dir permission
   ichmod -r read $customer_username /igfZone/home/$customer_username/
@@ -141,20 +148,20 @@ else
 fi
 
 chmod 770 $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#customerEmail/$customer_email/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#customerName/$customer_name/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#customerUsername/$customer_username/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#passwd/$customer_passwd/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#projectName/$PROJECT_TAG/" $RUN_DIR_BCL2FASTQ/$customer_mail
-sed -i -e "s/#projectRunDate/$SEQ_RUN_DATE/g" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#customerEmail|$customer_email|" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#customerName|$customer_name|" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#customerUsername|$customer_username|" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#passwd|$customer_passwd|" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#projectName|$PROJECT_TAG|" $RUN_DIR_BCL2FASTQ/$customer_mail
+sed -i -e "s|#projectRunDate|$SEQ_RUN_DATE|g" $RUN_DIR_BCL2FASTQ/$customer_mail
 
 customer_email=$RUN_DIR_BCL2FASTQ/$customer_mail
 send_email_script=$RUN_DIR_BCL2FASTQ/send_email.${PROJECT_TAG}.sh
 cp $SEND_EMAIL_SCRIPT $send_email_script
 chmod 770 $send_email_script
 
-sed -i -e "s/#customerEmail/${customer_email//\//\\/}/" $send_email_script
-sed -i -e "s/#customerUsername/$customer_username/" $send_email_script
+sed -i -e "s|#customerEmail|${customer_email}|" $send_email_script
+sed -i -e "s|#customerUsername|$customer_username|" $send_email_script
 log_output_path=`echo $send_email_script | perl -pe 's/\.sh/\.log/g'`
 echo -n "" > $log_output_path
 echo -n "`$NOW`submitting send email to the customer job: "

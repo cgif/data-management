@@ -92,13 +92,19 @@ do
 
      retval=$?
      if [ "$retval" -ne 0 ]; then
-       msg="subject:Sequencing Data for project $PROJECT_TAG Processing Error. Processing aborted."
+       msg="Sequencing Data for project $PROJECT_TAG fastq tar IRODS upload Error. Processing aborted."
        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
        exit 1
      fi
   
      # Add md5 value to irods
      iput -fP -R woolfResc $TMPDIR/${seq_run_date_lane}.tar.md5  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
+     retval=$?
+     if [ "$retval" -ne 0 ]; then
+       msg="Sequencing Data for project $PROJECT_TAG md5 IRODS upload Error. Processing aborted."
+       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+       exit 1
+     fi
 
      # Set expire date
      isysmeta mod /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE/${seq_run_date_lane}.tar '+30d'

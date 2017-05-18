@@ -36,7 +36,7 @@ SLACK_URL=https://slack.com/api/chat.postMessage
 SLACK_OPT="-d 'channel'='C4W5G8550' -d 'username'='igf_bot'"
 SLACK_TOKEN=#slackToken
 
-TODAY=`date +%Y-%m-%d`
+TODAY=#todayFastqc
 
 ############################################
 function fastqcSubmit {

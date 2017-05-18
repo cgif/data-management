@@ -19,7 +19,7 @@ module load bcl2fastq/#bcl2FastqVersion
 NOW="date +%Y-%m-%d%t%T%t"
 
 #today
-TODAY=`date +%Y-%m-%d`
+TODAY=#todayBcl2fq
 
 BASEDIR="$( cd "$( dirname "$0" )" && pwd )"
 BASE_PYTHON_DIR=#base_python_dir

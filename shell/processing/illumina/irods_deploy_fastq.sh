@@ -17,7 +17,7 @@
 NOW="date +%Y-%m-%d%t%T%t"
 
 #today
-TODAY=`date +%Y-%m-%d`
+TODAY=#todayIrods
 
 ############################ XXXXXXXXXXXXXX
 DEPLOYMENT_SERVER=eliot.med.ic.ac.uk

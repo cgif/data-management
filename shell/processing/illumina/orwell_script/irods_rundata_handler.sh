@@ -145,6 +145,11 @@ do
 
           if [ "$externalUser" == "Y" ]; then
             iadmin moduser $customer_username#igfZone password $customer_passwd          
+            if [ "$?" -ne 0 ]; then
+              msg="ERROR: can not set password for irods user $customer_username , aborting process." 
+              res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+              exit 1
+            fi
 
             msg="password has been set for non-hpc customer account $customer_username"
             res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh` 

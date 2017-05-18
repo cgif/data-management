@@ -132,13 +132,18 @@ do
         
         irods_user=`iadmin lu | grep $customer_username | cut -d "#" -f1`
 
-        if [ "$irods_user" = "" ]; then
+        if [ "$irods_user" == "" ]; then
           iadmin mkuser $customer_username#igfZone rodsuser
+          if [ "$?" -ne 0 ]; then
+            msg="ERROR: can not create irods user $customer_username , aborting process." 
+            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+            exit 1
+          fi
 
           msg="customer account for $customer_username is created in irods for project $project_tag "
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh` 
 
-          if [ "$externalUser" = "Y" ]; then
+          if [ "$externalUser" == "Y" ]; then
             iadmin moduser $customer_username#igfZone password $customer_passwd          
 
             msg="password has been set for non-hpc customer account $customer_username"

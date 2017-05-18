@@ -66,7 +66,7 @@ function fastqcSubmit {
 
   #copy fastqs to tmp space
   cp $path_fastq_read1 $TMPDIR/fastq/$fastq_read1
-  if [ $? -ne "0" ]; then
+  if [ "$?" -ne 0 ]; then
     msg="ERROR while copying R1 $fastq_read1"
     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
     exit 1
@@ -79,7 +79,7 @@ function fastqcSubmit {
 
   if [[ "$single_read" == "F" ]]; then
     cp $path_fastq_read2 $TMPDIR/fastq/$fastq_read2
-    if [ $? -ne "0" ]; then
+    if [ "$?" -ne 0 ]; then
       msg="ERROR while copying R2 $fastq_read2"
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
@@ -88,14 +88,14 @@ function fastqcSubmit {
            
   #check if mate file found and the number of lines in mate files is the same
   gzip -t $TMPDIR/fastq/$fastq_read1
-  if [ $? -ne "0" ]; then
+  if [ "$?" -ne 0 ]; then
     msg="ERROR:File $fastq_read1 is corrupted. Skipped" 
     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
   fi
 
   if [[ "$single_read" == "F" ]]; then
     gzip -t $TMPDIR/fastq/$fastq_read2
-    if [ $? -ne "0" ]; then
+    if [ "$?" -ne 0 ]; then
       msg="ERROR:File $FASTQ_READ2 is corrupted. Skipped." 
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
     else 

@@ -78,7 +78,7 @@ do
    md5sum $TMPDIR/${seq_run_date_lane}.tar > $TMPDIR/${seq_run_date_lane}.tar.md5
    chmod 664 $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 
-   if [ "$USE_IRODS" = "T" ]; then
+   if [ "$USE_IRODS" == "T" ]; then
      # Creates the deploy structure
      imkdir -p /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
      ichmod -M own igf /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE
@@ -121,7 +121,7 @@ if [ "$ldapUser" -ne 0 ]; then
     externalUser="Y"
 fi
 
-if [ "$USE_IRODS" = "T" ];then
+if [ "$USE_IRODS" == "T" ];then
   # Change dir permission
   ichmod -r read $customer_username /igfZone/home/$customer_username/
 fi
@@ -129,14 +129,14 @@ fi
 
 # Prepare the email to send to the customer
 customer_mail=customer_mail.$PROJECT_TAG
-if [[ $externalUser == "Y" ]];then
-  if [ "$USE_IRODS" = "T" ];then
+if [[ "$externalUser" == "Y" ]];then
+  if [ "$USE_IRODS" == "T" ];then
     cp $MAIL_TEMPLATE_PATH/eirodscustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
   else
     cp $MAIL_TEMPLATE_PATH/ecustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
   fi
 else
-  if [ "$USE_IRODS" = "T" ];then
+  if [ "$USE_IRODS" == "T" ];then
     cp $MAIL_TEMPLATE_PATH/iirodscustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail
   else
     cp $MAIL_TEMPLATE_PATH/icustomer_mail.tml $RUN_DIR_BCL2FASTQ/$customer_mail

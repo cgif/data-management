@@ -122,7 +122,7 @@ do
 done
 
 ldapUser=`ldapsearch -x -h unixldap.cc.ic.ac.uk | grep -w "uid: $customer_username"|wc -l`
-if [ "$ldapUser" -ne 0 ]; then
+if [ "$ldapUser" -eq 0 ]; then
     echo "External customer"
     externalUser="Y"
 fi

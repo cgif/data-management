@@ -268,7 +268,7 @@ do
 
       if [ "${#fastq_arr[@]}" -eq 1 ];then
         fastq_read1=${fastq_arr[0]}
-      elif ["${#fastq_arr[@]}" -eq 2 ];then
+      elif [ "${#fastq_arr[@]}" -eq 2 ];then
         fastq_read1=${fastq_arr[0]}
         fastq_read2=${fastq_arr[1]}
       else

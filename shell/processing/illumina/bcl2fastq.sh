@@ -64,7 +64,7 @@ python $BASE_PYTHON_DIR/scripts/file_copy/moveFilesForDemultiplexing.py -i $PATH
 # Run BC2Fastq
 ###################
 
-msg="started bcl2fastq conversion for $RUN_NAME/$ILANE"
+msg="Started bcl2fastq conversion for run: $RUN_NAME , lane: $ILANE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 bcl2fastq \
@@ -79,7 +79,7 @@ bcl2fastq \
 --auto-set-to-zero-barcode-mismatches
 
 
-msg="finished bcl2fastq conversion for $RUN_NAME/$ILANE"
+msg="Finished bcl2fastq conversion for run: $RUN_NAME ,lane: $ILANE, moving fastq files"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Undetermined indices fastqs
@@ -99,9 +99,6 @@ done
 # Iterate over project folders
 for PROJECT_DIR in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do	
-        msg="moving fastq files to $PROJECT_DIR"
-        res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
         if [ $PROJECT_DIR != 'Stats' ] && [ $PROJECT_DIR != 'Reports' ]; then
 	  mkdir -m 770 -v -p $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
 	  chmod 770 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}
@@ -110,9 +107,6 @@ do
           awk -v tag=$PROJECT_DIR -v filter="Sample_ID" 'BEGIN{line_count=0}{if(line_count == 0){print};if($0 ~ filter){line_count=1}else{if( $0 ~ tag){print}}}' $PATH_SAMPLE_SHEET > $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
 
           chmod 660 $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/SampleSheet.csv
-
-          msg="copying Stats and Reports to $PROJECT_DIR $ILANE"
-          res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
           cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Reports $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
           cp -r $TMPDIR/$RUN_NAME/${ILANE}/fastq/Stats $PATH_RAWDATA_DIR/$PROJECT_DIR/fastq/$RUN_DATE/${ILANE}/
@@ -123,8 +117,6 @@ do
 	  for SAMPLE_DIR_NAME in `find $TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 	  do
             # SAMPLE
-            msg="creating dir structure for $PROJECT_DIR $ILANE $SAMPLE_DIR_NAME"
-            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
  
             # Set source dir
             SAMPLE_DIR_PATH=$TMPDIR/$RUN_NAME/${ILANE}/fastq/$PROJECT_DIR/$SAMPLE_DIR_NAME
@@ -138,9 +130,6 @@ do
 	    # Change to sample directory
 	    cd $SAMPLE_DIR_PATH
                   
-            msg="copying fastq files for $PROJECT_DIR $ILANE $sample_id_val"
-            res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
             for FASTQ_FILE in `find . -type f -name '*.fastq*.gz' -exec basename {} \;`
             do
               # FASTQ FILE
@@ -164,7 +153,7 @@ do
         fi
 done
 
-msg="finished fastq move for $RUN_NAME/$ILANE"
+msg="Finished fastq move for run: $RUN_NAME, lane: $ILANE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 

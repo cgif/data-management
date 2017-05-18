@@ -64,14 +64,14 @@ fi
 # Goto the destination dir
 cd $PATH_TO_DESTINATION/$SEQ_RUN_DATE
 
+msg="Starting irods file upload for $SEQ_RUN_NAME, project $PROJECT_TAG, customer $customer_name"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 # Find all lane dirs
 for lane_dir in `find .  -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do
    seq_run_date_lane=${SEQ_RUN_DATE}_${lane_dir}
    # Create tar files per lane
-   msg="creating tar for ${SEQ_RUN_NAME} ${PROJECT_TAG} ${SEQ_RUN_DATE} ${lane_dir}"
-   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
-
    tar hcf $TMPDIR/${seq_run_date_lane}.tar  -C $PATH_TO_DESTINATION/$SEQ_RUN_DATE ${lane_dir}
 
    # Generate an md5 checksum for the tarball
@@ -86,9 +86,6 @@ do
 
      # Set metadata
      imeta add -C /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE run_name $SEQ_RUN_NAME
-
-     msg="adding files for ${seq_run_date_lane} to irods"
-     res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
      # Store file in irods
      iput -k -fP -N 4 -X $TMPDIR/restartFile.$lane_dir --retries 3 -R woolfResc $TMPDIR/${seq_run_date_lane}.tar  /igfZone/home/$customer_username/$PROJECT_TAG/fastq/$SEQ_RUN_DATE

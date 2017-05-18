@@ -182,6 +182,9 @@ scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/warning.png $DEPLOYMENT_SERVE
 scp -r ${WORKFLOW_REPO_DIR}/shell/resources/images/igf.png $DEPLOYMENT_SERVER:$fastqc_summary_deployment/ < /dev/null
 ssh $DEPLOYMENT_SERVER "chmod -R 664 $fastqc_summary_deployment/*png" < /dev/null
 
+msg="Starting Fastqc check for project $PROJECT_NAME"
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 
 for lane_dir in `find $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/ -mindepth 1 -maxdepth 1 -type d -exec basename {} \;`
 do
@@ -233,22 +236,18 @@ do
         fastq_read1=''
         fastq_read2=''
  
+        # Check fastq and submit fastqc jobs for NextSeq platform
         if [ "${#fastq_arr[@]}" -eq 1 ];then
           fastq_read1=${fastq_arr[0]}
+          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
         elif [ "${#fastq_arr[@]}" -eq 2 ];then
           fastq_read1=${fastq_arr[0]}
           fastq_read2=${fastq_arr[1]}
+          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
         else
           msg="can not assign fastq files type for files in $path_reads_dir; aborting process"
           res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
           exit 1
-        fi
-
-        # Submit fastqc jobs for NextSeq platform
-        if [ "$fastq_read2" -ne '' ];then
-          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
-        else
-          fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
         fi
       done
 
@@ -266,21 +265,18 @@ do
         exit 1
       fi
 
+      # Check fastq and submit fastqc jobs for other platform
       if [ "${#fastq_arr[@]}" -eq 1 ];then
         fastq_read1=${fastq_arr[0]}
+        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
       elif [ "${#fastq_arr[@]}" -eq 2 ];then
         fastq_read1=${fastq_arr[0]}
         fastq_read2=${fastq_arr[1]}
+        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
       else
         msg="can not assign fastq files type for files in $path_reads_dir; aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
-      fi
-
-      if [ "$fastq_read2" -ne '' ];then
-        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $path_reads_dir/$fastq_read2
-      else
-        fastqcSubmit $qc_report_outputdir $fastqc_deployment_path $path_reads_dir/$fastq_read1 $fastq_read2
       fi
     fi
             
@@ -291,7 +287,7 @@ do
   ssh $DEPLOYMENT_SERVER "mkdir -m 770 -p $DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
   scp -r $DATA_VOL_IGF/rawdata/$PROJECT_NAME/fastq/$SEQRUN_DATE/$lane_dir/Reports/html $DEPLOYMENT_SERVER:$DEPLOYMENT_BASE_DIR/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}
 
-  msg="Demultiplexing stats for run $SEQRUN_NAME is available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
+  msg="Demultiplexing stats for run $SEQRUN_NAME lane ${lane_dir} is available, http://eliot.med.ic.ac.uk/report/seqrun/$SEQRUN_NAME/bcl2fastq/$TODAY/lane${lane_dir}"
   res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
   # FastQC jobs for unassigned reads
@@ -327,22 +323,18 @@ do
         exit 1
       fi
 
+      # Check fastq and submit fastqc jobs for NextSeq platform  
       if [ "${#ufastq_arr[@]}" -eq 1 ];then
         ufastq_read1=${ufastq_arr[0]}
+        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
       elif [ "${#ufastq_arr[@]}" -eq 2 ];then
         ufastq_read1=${ufastq_arr[0]}
         ufastq_read2=${ufastq_arr[1]}
+        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
       else
         msg="can not assign fastq files type for files in $upath_reads_dir, aborting process"
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
         exit 1
-      fi
-
-      # Submit fastqc jobs for NextSeq platform  
-      if [ "$ufastq_read2" -ne '' ];then
-        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
-      else
-        fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
       fi
     done
   else
@@ -358,21 +350,18 @@ do
         exit 1
     fi
 
+    # Check fastq and submit fastqc jobs for other platform  
     if [ "${#ufastq_arr[@]}" -eq 1 ];then
       ufastq_read1=${ufastq_arr[0]}
+      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
     elif [ "${#ufastq_arr[@]}" -eq 2 ];then
       ufastq_read1=${ufastq_arr[0]}
       ufastq_read2=${ufastq_arr[1]}
+      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
     else
       msg="can not assign fastq files type for files in $upath_reads_dir, aborting process"
       res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       exit 1
-    fi
-
-    if [ "$ufastq_read2" -ne '' ];then
-      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $upath_reads_dir/$ufastq_read2
-    else
-      fastqcSubmit $uqc_report_outputdir $ufastqc_deployment_path $upath_reads_dir/$ufastq_read1 $ufastq_read2
     fi
   fi
 
@@ -489,7 +478,7 @@ if [ "$retval" -ne 0 ]; then
   exit 1
 fi
 
-msg="fastqc report for $PROJECT_NAME  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE"
+msg="Fastqc report for $PROJECT_NAME  $SEQRUN_DATE is available, http://eliot.med.ic.ac.uk/report/project/$PROJECT_NAME/fastqc/$SEQRUN_DATE"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 

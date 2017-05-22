@@ -61,6 +61,13 @@ mkdir -p $TMPDIR/$RUN_NAME/$ILANE/fastq
 #####################
 python $BASE_PYTHON_DIR/scripts/file_copy/moveFilesForDemultiplexing.py -i $PATH_SEQRUN_DIR -o $TMPDIR/$RUN_NAME/$ILANE -s $PATH_SAMPLE_SHEET -r $PATH_SEQRUN_DIR/RunInfo.xml
 
+retval=$?
+  if [ "$retval" -ne 0 ]; then
+    msg="got error while copying files before bcl2fastq, run: $RUN_NAME, lane: $ILANE , aborting process"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
+fi
+
 # Run BC2Fastq
 ###################
 
@@ -78,6 +85,12 @@ bcl2fastq \
 --barcode-mismatches 1 \
 --auto-set-to-zero-barcode-mismatches
 
+retval=$?
+  if [ "$retval" -ne 0 ]; then
+    msg="got error while running bcl2fastq, run: $RUN_NAME, lane: $ILANE , aborting process"
+    res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+    exit 1
+fi
 
 msg="Finished bcl2fastq conversion for run: $RUN_NAME ,lane: $ILANE, moving fastq files"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`

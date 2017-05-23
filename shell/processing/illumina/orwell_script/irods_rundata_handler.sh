@@ -174,7 +174,7 @@ if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 RUN_NAME_LIST="${RUN_NAME}_files_md5"
 cd $PATH_SEQRUNS_DIR/$RUN_NAME
 
-msg="Preparing files list and md5 transfer: $RUN_NAME"
+msg="Preparing files list and md5 for transfer: $RUN_NAME"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Preparing lists of files

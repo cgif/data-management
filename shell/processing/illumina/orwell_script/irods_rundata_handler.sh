@@ -71,6 +71,9 @@ SAMPLE_SHEET_PREFIX="SampleSheet"
 echo "`$NOW` Creating TAR archive..."
 cd $PATH_SEQRUNS_DIR/$RUN_NAME
 
+msg="Found new sequencing run: $RUN_NAME , started demultiplexing process."
+res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
+
 # Convert sample sheet & customers info file
 dos2unix $SAMPLE_SHEET_PREFIX.csv
 dos2unix $CUSTOMERS_FILEPATH/lims_user.csv
@@ -171,7 +174,7 @@ if [[ ! -e $CUSTOMERS_RUNS_FILE ]]
 RUN_NAME_LIST="${RUN_NAME}_files_md5"
 cd $PATH_SEQRUNS_DIR/$RUN_NAME
 
-msg="changing to $PATH_SEQRUNS_DIR/$RUN_NAME"
+msg="Preparing files list and md5 transfer: $RUN_NAME"
 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 # Preparing lists of files

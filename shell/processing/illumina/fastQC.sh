@@ -127,18 +127,19 @@ function fastqcSubmit {
   fi
 
   #copy results to output folder
-  cp $TMPDIR/qc/r1/*zip $PATH_QC_REPORT_DIR
-  cp $TMPDIR/qc/r2/*zip $PATH_QC_REPORT_DIR
-  chmod 660 $PATH_QC_REPORT_DIR/*zip
+  cp $TMPDIR/qc/r1/*zip $path_qc_report_dir
+  cp $TMPDIR/qc/r2/*zip $path_qc_report_dir
+  chmod 660 $path_qc_report_dir/*zip
 
   ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $deployment_path" < /dev/null
 
   for zip in `ls $TMPDIR/qc/r1/*.zip`
   do
-    unzip $zip
     local report_dir=`basename $zip .zip`	
+    unzip -d $TMPDIR/qc/r1/ $TMPDIR/qc/r1/${report_dir}.zip
+
     #add to the report the link to the list of samples
-    sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $report_dir/fastqc_report.html
+    sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $TMPDIR/qc/r1/$report_dir/fastqc_report.html
     #if udetermined fastq file add a link in the report to the files listing possible indexes
     if [[ $zip == *"Undetermined"* ]]
     then
@@ -147,9 +148,7 @@ function fastqcSubmit {
       sed -i 's/<\/ul>/<li><a href=\"'${barcodes}'\.txt">Barcode<\/a><\/li><\/ul>/g' $TMPDIR/qc/r1/$report_dir/fastqc_report.html
     fi
     scp -r $TMPDIR/qc/r1/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null 
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir" < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*"  < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*/*"  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod -R 775 $deployment_path/$report_dir" < /dev/null
 
     mkdir -p -m 770 $path_qc_report_dir/$report_dir
     cp $TMPDIR/qc/r1/$report_dir/*.txt  $path_qc_report_dir/$report_dir
@@ -159,14 +158,13 @@ function fastqcSubmit {
 
   for zip in `ls $TMPDIR/qc/r2/*.zip`
   do
-    unzip $zip
     local report_dir=`basename $zip .zip`
+    unzip -d $TMPDIR/qc/r2/ $TMPDIR/qc/r2/${report_dir}.zip
+
     sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $TMPDIR/qc/r2/$report_dir/fastqc_report.html
 
     scp -r $TMPDIR/qc/r2/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir" < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*"  < /dev/null
-    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*/*"  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod -R 775 $deployment_path/$report_dir" < /dev/null
  
     mkdir -p -m 770 $path_qc_report_dir/$report_dir
     cp $TMPDIR/qc/r2/$report_dir/*.txt  $path_qc_report_dir/$report_dir

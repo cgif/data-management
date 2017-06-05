@@ -61,7 +61,7 @@ function fastqcSubmit {
   #create temporary QC report output directory
   rm -rf $TMPDIR/qc
   rm -rf $TMPDIR/fastq
-  mkdir -m 770 -p $TMPDIR/qc
+  mkdir -m 770 -p $TMPDIR/qc/{r1,r2}
   mkdir -m 770 -p $TMPDIR/fastq
 
   #copy fastqs to tmp space
@@ -106,13 +106,13 @@ function fastqcSubmit {
         msg="ERROR:Unequal number of lines in the mate files. Skipped." 
         res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
       else
-        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
-	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read2
+        $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc/r1 --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
+	$FASTQC_HOME/bin/fastqc -o $TMPDIR/qc/r2 --noextract --nogroup  $TMPDIR/fastq/$fastq_read2
       fi	
     fi
   else
     #run FastQC for single reads
-    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
+    $FASTQC_HOME/bin/fastqc -o $TMPDIR/qc/r1 --noextract --nogroup  $TMPDIR/fastq/$fastq_read1
   fi
 
   # if Undetermined fastq file
@@ -120,19 +120,20 @@ function fastqcSubmit {
   then 
     #try to find the correct barcode
     barcodes=`echo $fastq_read1 | perl -pe 's/_R1//g'`
-    zcat $TMPDIR/fastq/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/${barcodes}.txt
+    zcat $TMPDIR/fastq/$fastq_read1|awk '{if( /^\@/ ){ FS=":"; if( $10){print $10 }}}'|sort |uniq -c|sort -nrk1,1 > $TMPDIR/qc/r1/${barcodes}.txt
 
     #copies barcode file in the results directory
-    cp $TMPDIR/qc/${barcodes}.txt $PATH_QC_REPORT_DIR
+    cp $TMPDIR/qc/r1/${barcodes}.txt $PATH_QC_REPORT_DIR
   fi
 
   #copy results to output folder
-  cp $TMPDIR/qc/*zip $PATH_QC_REPORT_DIR
+  cp $TMPDIR/qc/r1/*zip $PATH_QC_REPORT_DIR
+  cp $TMPDIR/qc/r2/*zip $PATH_QC_REPORT_DIR
   chmod 660 $PATH_QC_REPORT_DIR/*zip
 
   ssh $DEPLOYMENT_SERVER "mkdir -p -m 775 $deployment_path" < /dev/null
 
-  for zip in `ls $TMPDIR/qc/*.zip`
+  for zip in `ls $TMPDIR/qc/r1/*.zip`
   do
     unzip $zip
     local report_dir=`basename $zip .zip`	
@@ -142,19 +143,37 @@ function fastqcSubmit {
     if [[ $zip == *"Undetermined"* ]]
     then
       #copies barcode file in the report directory
-      cp $TMPDIR/qc/${barcodes}.txt $report_dir
-      sed -i 's/<\/ul>/<li><a href=\"'${barcodes}'\.txt">Barcode<\/a><\/li><\/ul>/g' $report_dir/fastqc_report.html
+      cp $TMPDIR/qc/r1/${barcodes}.txt $report_dir
+      sed -i 's/<\/ul>/<li><a href=\"'${barcodes}'\.txt">Barcode<\/a><\/li><\/ul>/g' $TMPDIR/qc/r1/$report_dir/fastqc_report.html
     fi
-    scp -r $TMPDIR/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null 
+    scp -r $TMPDIR/qc/r1/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null 
     ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir" < /dev/null
     ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*"  < /dev/null
     ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*/*"  < /dev/null
 
     mkdir -p -m 770 $path_qc_report_dir/$report_dir
-    cp $TMPDIR/$report_dir/*.txt  $path_qc_report_dir/$report_dir
+    cp $TMPDIR/qc/r1/$report_dir/*.txt  $path_qc_report_dir/$report_dir
     chmod 660 $path_qc_report_dir/$report_dir/*.txt
 
   done
+
+  for zip in `ls $TMPDIR/qc/r2/*.zip`
+  do
+    unzip $zip
+    local report_dir=`basename $zip .zip`
+    sed -i 's/<ul>/<ul><li><a href=\"\.\.\/\.\.\/\">Home<\/a><\/li>/g' $TMPDIR/qc/r2/$report_dir/fastqc_report.html
+
+    scp -r $TMPDIR/qc/r2/$report_dir $DEPLOYMENT_SERVER:$deployment_path/  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir" < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*"  < /dev/null
+    ssh $DEPLOYMENT_SERVER "chmod 775 $deployment_path/$report_dir/*/*"  < /dev/null
+ 
+    mkdir -p -m 770 $path_qc_report_dir/$report_dir
+    cp $TMPDIR/qc/r2/$report_dir/*.txt  $path_qc_report_dir/$report_dir
+    chmod 660 $path_qc_report_dir/$report_dir/*.txt
+
+  done
+  
 }
 ############################################
 # PROJECT

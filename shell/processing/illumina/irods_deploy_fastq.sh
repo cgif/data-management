@@ -75,7 +75,9 @@ do
    tar hcf $TMPDIR/${seq_run_date_lane}.tar  -C $PATH_TO_DESTINATION/$SEQ_RUN_DATE ${lane_dir}
 
    # Generate an md5 checksum for the tarball
-   md5sum $TMPDIR/${seq_run_date_lane}.tar > $TMPDIR/${seq_run_date_lane}.tar.md5
+
+   cd $TMPDIR
+   md5sum ${seq_run_date_lane}.tar > ${seq_run_date_lane}.tar.md5
    chmod 664 $TMPDIR/${seq_run_date_lane}.tar $TMPDIR/${seq_run_date_lane}.tar.md5
 
    if [ "$USE_IRODS" == "T" ]; then

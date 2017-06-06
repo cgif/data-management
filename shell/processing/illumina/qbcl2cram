@@ -380,7 +380,7 @@ do
 
         # Checks if the project directory already exists in the web server
 	if ssh $DEPLOYMENT_SERVER "[ -d /$DEPLOYMENT_PATH/$project_tag ]" < /dev/null ;then
-               	msg="directory $DEPLOYMENT_PATH/$project_tag exists, aborting process"
+               	msg="directory $DEPLOYMENT_PATH/$project_tag exists, skipping process"
                 res=`echo "curl $SLACK_URL -X POST $SLACK_OPT -d 'token'='$SLACK_TOKEN' -d 'text'='$msg'"|sh`
 
 	else
